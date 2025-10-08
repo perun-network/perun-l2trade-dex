@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Perun DEX WebSocket Demo</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .client-panel {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .alice {
+            border-left: 4px solid #4CAF50;
+        }
+
+        .bob {
+            border-left: 4px solid #2196F3;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+
+        h2 {
+            margin-top: 0;
+            color: #555;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+
+        input,
+        select,
+        button {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+        .bob button {
+            background-color: #2196F3;
+        }
+
+        .bob button:hover {
+            background-color: #1976D2;
+        }
+
+        .status {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+
+        .status.connected {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .messages {
+            grid-column: 1 / -1;
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .message {
+            margin-bottom: 10px;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .message.sent {
+            background-color: #e3f2fd;
+            border-left: 3px solid #2196F3;
+        }
+
+        .message.received {
+            background-color: #f3e5f5;
+            border-left: 3px solid #9c27b0;
+        }
+
+        .message.error {
+            background-color: #ffebee;
+            border-left: 3px solid #f44336;
+        }
+
+        .balances {
+            background-color: #f9f9f9;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+
+        .balance-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🔗 Perun DEX WebSocket Demo</h1>
+
+    <div class="container">
+        <!-- Alice Panel -->
+        <div class="client-panel alice">
+            <h2>👩 Alice (ETH Sender)</h2>
+
+            <div class="form-group">
+                <label for="alice-address">Wallet Address:</label>
+                <input type="text" id="alice-address" value="0x742d35Cc6634C0532925a3b8D2Ba8d1FF4dA7e42" readonly>
+            </div>
+
+            <div class="status disconnected" id="alice-status">Disconnected</div>
+
+            <button onclick="connectAlice()" id="alice-connect-btn">Connect Alice</button>
+
+            <div class="form-group" style="margin-top: 20px;">
+                <label for="alice-eth-balance">Initial ETH Balance:</label>
+                <input type="number" id="alice-eth-balance" value="5" step="0.1">
+            </div>
+
+            <div class="form-group">
+                <label for="alice-sol-balance">Initial SOL Balance:</label>
+                <input type="number" id="alice-sol-balance" value="0" step="1">
+            </div>
+
+            <button onclick="createChannel()" id="alice-create-channel-btn" disabled>Create Payment Channel</button>
+
+            <div class="form-group" style="margin-top: 20px;">
+                <label for="alice-eth-amount">ETH Amount to Send:</label>
+                <input type="number" id="alice-eth-amount" value="1" step="0.1">
+            </div>
+
+            <div class="form-group">
+                <label for="alice-sol-request">SOL Amount to Request:</label>
+                <input type="number" id="alice-sol-request" value="50" step="1">
+            </div>
+
+            <button onclick="proposeSwap()" id="alice-swap-btn" disabled>Propose ETH → SOL Swap</button>
+
+            <button onclick="settleChannel()" id="alice-settle-btn" disabled>Settle Channel</button>
+
+            <div class="balances" id="alice-balances" style="display: none;">
+                <h4>Channel Balances:</h4>
+                <div class="balance-item">
+                    <span>ETH:</span>
+                    <span id="alice-channel-eth">0</span>
+                </div>
+                <div class="balance-item">
+                    <span>SOL:</span>
+                    <span id="alice-channel-sol">0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bob Panel -->
+        <div class="client-panel bob">
+            <h2>👨 Bob (SOL Sender)</h2>
+
+            <div class="form-group">
+                <label for="bob-address">Wallet Address:</label>
+                <input type="text" id="bob-address" value="0x8ba1f109551bD432803012645Hac136c5e596e26" readonly>
+            </div>
+
+            <div class="status disconnected" id="bob-status">Disconnected</div>
+
+            <button onclick="connectBob()" id="bob-connect-btn">Connect Bob</button>
+
+            <div class="form-group" style="margin-top: 20px;">
+                <label for="bob-eth-balance">Initial ETH Balance:</label>
+                <input type="number" id="bob-eth-balance" value="0" step="0.1">
+            </div>
+
+            <div class="form-group">
+                <label for="bob-sol-balance">Initial SOL Balance:</label>
+                <input type="number" id="bob-sol-balance" value="1000" step="1">
+            </div>
+
+            <div id="bob-swap-proposal"
+                style="display: none; background: #fff3cd; padding: 10px; border-radius: 4px; margin: 10px 0;">
+                <h4>Incoming Swap Proposal:</h4>
+                <p id="swap-details"></p>
+                <button onclick="acceptSwap()">Accept Swap</button>
+                <button onclick="rejectSwap()" style="background: #dc3545;">Reject Swap</button>
+            </div>
+
+            <div class="balances" id="bob-balances" style="display: none;">
+                <h4>Channel Balances:</h4>
+                <div class="balance-item">
+                    <span>ETH:</span>
+                    <span id="bob-channel-eth">0</span>
+                </div>
+                <div class="balance-item">
+                    <span>SOL:</span>
+                    <span id="bob-channel-sol">0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Messages Panel -->
+        <div class="messages">
+            <h3>📝 Message Log</h3>
+            <div id="message-log"></div>
+        </div>
+    </div>
+
+    <script>
+        let aliceWs = null;
+        let bobWs = null;
+        let currentChannelId = null;
+        let currentSwapId = null;
+
+        function addMessage(message, type = 'received') {
+            const messageLog = document.getElementById('message-log');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            messageDiv.innerHTML = `<strong>${new Date().toLocaleTimeString()}</strong>: ${message}`;
+            messageLog.appendChild(messageDiv);
+            messageLog.scrollTop = messageLog.scrollHeight;
+        }
+
+        function updateStatus(clientId, connected) {
+            const statusEl = document.getElementById(`${clientId}-status`);
+            statusEl.textContent = connected ? 'Connected' : 'Disconnected';
+            statusEl.className = `status ${connected ? 'connected' : 'disconnected'}`;
+        }
+
+        function connectAlice() {
+            if (aliceWs) return;
+
+            aliceWs = new WebSocket('ws://localhost:8080/ws');
+
+            aliceWs.onopen = function () {
+                updateStatus('alice', true);
+                addMessage('Alice connected to WebSocket', 'sent');
+
+                // Register Alice
+                const registerMsg = {
+                    type: 'register',
+                    data: {
+                        user_id: 'alice',
+                        address: document.getElementById('alice-address').value,
+                        is_alice: true
+                    },
+                    timestamp: new Date().toISOString()
+                };
+
+                aliceWs.send(JSON.stringify(registerMsg));
+                addMessage('Alice registration sent', 'sent');
+
+                document.getElementById('alice-connect-btn').disabled = true;
+                document.getElementById('alice-create-channel-btn').disabled = false;
+            };
+
+            aliceWs.onmessage = function (event) {
+                const msg = JSON.parse(event.data);
+                handleAliceMessage(msg);
+            };
+
+            aliceWs.onclose = function () {
+                updateStatus('alice', false);
+                addMessage('Alice disconnected', 'error');
+                aliceWs = null;
+                document.getElementById('alice-connect-btn').disabled = false;
+                document.getElementById('alice-create-channel-btn').disabled = true;
+            };
+
+            aliceWs.onerror = function (error) {
+                addMessage(`Alice WebSocket error: ${error}`, 'error');
+            };
+        }
+
+        function connectBob() {
+            if (bobWs) return;
+
+            bobWs = new WebSocket('ws://localhost:8080/ws');
+
+            bobWs.onopen = function () {
+                updateStatus('bob', true);
+                addMessage('Bob connected to WebSocket', 'sent');
+
+                // Register Bob
+                const registerMsg = {
+                    type: 'register',
+                    data: {
+                        user_id: 'bob',
+                        address: document.getElementById('bob-address').value,
+                        is_alice: false
+                    },
+                    timestamp: new Date().toISOString()
+                };
+
+                bobWs.send(JSON.stringify(registerMsg));
+                addMessage('Bob registration sent', 'sent');
+
+                document.getElementById('bob-connect-btn').disabled = true;
+            };
+
+            bobWs.onmessage = function (event) {
+                const msg = JSON.parse(event.data);
+                handleBobMessage(msg);
+            };
+
+            bobWs.onclose = function () {
+                updateStatus('bob', false);
+                addMessage('Bob disconnected', 'error');
+                bobWs = null;
+                document.getElementById('bob-connect-btn').disabled = false;
+            };
+
+            bobWs.onerror = function (error) {
+                addMessage(`Bob WebSocket error: ${error}`, 'error');
+            };
+        }
+
+        function handleAliceMessage(msg) {
+            addMessage(`Alice received: ${msg.type}`, 'received');
+
+            switch (msg.type) {
+                case 'register_response':
+                    addMessage(`Alice registered successfully`, 'received');
+                    break;
+
+                case 'channel_created':
+                    currentChannelId = msg.data.channel_id;
+                    updateChannelBalances('alice', msg.data.balances);
+                    addMessage(`Channel created: ${currentChannelId}`, 'received');
+                    document.getElementById('alice-swap-btn').disabled = false;
+                    document.getElementById('alice-settle-btn').disabled = false;
+                    break;
+
+                case 'swap_complete':
+                    updateChannelBalances('alice', msg.data.new_balances);
+                    addMessage(`Swap completed! New balances updated.`, 'received');
+                    break;
+
+                case 'settled':
+                    addMessage(`Channel settled! Final balances: ETH: ${msg.data.final_balances.ETH || '0'}, SOL: ${msg.data.final_balances.SOL || '0'}`, 'received');
+                    break;
+
+                case 'error':
+                    addMessage(`Error: ${msg.data.message}`, 'error');
+                    break;
+            }
+        }
+
+        function handleBobMessage(msg) {
+            addMessage(`Bob received: ${msg.type}`, 'received');
+
+            switch (msg.type) {
+                case 'register_response':
+                    addMessage(`Bob registered successfully`, 'received');
+                    break;
+
+                case 'channel_created':
+                    currentChannelId = msg.data.channel_id;
+                    updateChannelBalances('bob', msg.data.balances);
+                    addMessage(`Channel joined: ${currentChannelId}`, 'received');
+                    break;
+
+                case 'swap_propose':
+                    currentSwapId = msg.data.swap_id;
+                    document.getElementById('swap-details').innerHTML =
+                        `Receive ${msg.data.from_amount} ${msg.data.from_asset} → Send ${msg.data.to_amount} ${msg.data.to_asset} (Rate: ${msg.data.exchange_rate})`;
+                    document.getElementById('bob-swap-proposal').style.display = 'block';
+                    addMessage(`Swap proposal received from Alice`, 'received');
+                    break;
+
+                case 'swap_complete':
+                    updateChannelBalances('bob', msg.data.new_balances);
+                    document.getElementById('bob-swap-proposal').style.display = 'none';
+                    addMessage(`Swap completed! New balances updated.`, 'received');
+                    break;
+
+                case 'settled':
+                    addMessage(`Channel settled! Final balances: ETH: ${msg.data.final_balances.ETH || '0'}, SOL: ${msg.data.final_balances.SOL || '0'}`, 'received');
+                    break;
+
+                case 'error':
+                    addMessage(`Error: ${msg.data.message}`, 'error');
+                    break;
+            }
+        }
+
+        function updateChannelBalances(client, balances) {
+            document.getElementById(`${client}-balances`).style.display = 'block';
+            document.getElementById(`${client}-channel-eth`).textContent = balances.ETH || '0';
+            document.getElementById(`${client}-channel-sol`).textContent = balances.SOL || '0';
+        }
+
+        function createChannel() {
+            if (!aliceWs) return;
+
+            const ethBalance = parseFloat(document.getElementById('alice-eth-balance').value);
+            const solBalance = parseFloat(document.getElementById('alice-sol-balance').value);
+
+            const createMsg = {
+                type: 'create_channel',
+                data: {
+                    partner_user_id: 'bob',
+                    initial_balances: {
+                        ETH: (ethBalance * 1e18).toString(), // Convert to wei
+                        SOL: (solBalance * 1e9).toString()   // Convert to lamports
+                    },
+                    challenge_duration: 3600
+                },
+                timestamp: new Date().toISOString()
+            };
+
+            aliceWs.send(JSON.stringify(createMsg));
+            addMessage('Alice: Channel creation request sent', 'sent');
+            document.getElementById('alice-create-channel-btn').disabled = true;
+        }
+
+        function proposeSwap() {
+            if (!aliceWs || !currentChannelId) return;
+
+            const ethAmount = parseFloat(document.getElementById('alice-eth-amount').value);
+            const solAmount = parseFloat(document.getElementById('alice-sol-request').value);
+            const rate = solAmount / ethAmount;
+
+            const swapMsg = {
+                type: 'swap_propose',
+                data: {
+                    channel_id: currentChannelId,
+                    from_asset: 'ETH',
+                    to_asset: 'SOL',
+                    from_amount: (ethAmount * 1e18).toString(), // Convert to wei
+                    to_amount: (solAmount * 1e9).toString(),   // Convert to lamports
+                    exchange_rate: rate.toString()
+                },
+                timestamp: new Date().toISOString()
+            };
+
+            aliceWs.send(JSON.stringify(swapMsg));
+            addMessage(`Alice: Swap proposal sent (${ethAmount} ETH → ${solAmount} SOL)`, 'sent');
+        }
+
+        function acceptSwap() {
+            if (!bobWs || !currentSwapId) return;
+
+            const acceptMsg = {
+                type: 'swap_accept',
+                data: {
+                    channel_id: currentChannelId,
+                    swap_id: currentSwapId
+                },
+                timestamp: new Date().toISOString()
+            };
+
+            bobWs.send(JSON.stringify(acceptMsg));
+            addMessage('Bob: Swap accepted', 'sent');
+        }
+
+        function rejectSwap() {
+            if (!bobWs || !currentSwapId) return;
+
+            const rejectMsg = {
+                type: 'swap_reject',
+                data: {
+                    channel_id: currentChannelId,
+                    swap_id: currentSwapId,
+                    reason: 'User declined'
+                },
+                timestamp: new Date().toISOString()
+            };
+
+            bobWs.send(JSON.stringify(rejectMsg));
+            addMessage('Bob: Swap rejected', 'sent');
+            document.getElementById('bob-swap-proposal').style.display = 'none';
+        }
+
+        function settleChannel() {
+            if (!aliceWs || !currentChannelId) return;
+
+            const settleMsg = {
+                type: 'settle',
+                data: {
+                    channel_id: currentChannelId
+                },
+                timestamp: new Date().toISOString()
+            };
+
+            aliceWs.send(JSON.stringify(settleMsg));
+            addMessage('Alice: Channel settlement initiated', 'sent');
+        }
+    </script>
+</body>
+
+</html>

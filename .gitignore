@@ -30,3 +30,14 @@ go.work.sum
 # Editor/IDE
 # .idea/
 # .vscode/
+
+# Project specific binaries
+perun-dex-server
+perun-dex-server_unix
+
+# Logs
+*.log
+
+# Local development
+.DS_Store
+Thumbs.db
