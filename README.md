@@ -1,4 +1,4 @@
-# Perun DEX WebSocket Demo
+# Perun DEX WebSocket
 
 A WebSocket-based backend demonstrating Perun payment channels for ETH/SOL asset swapping between Alice and Bob.
 
