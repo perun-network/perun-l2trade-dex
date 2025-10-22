@@ -8,7 +8,6 @@ import (
 	"github.com/pkg/errors"
 	"perun.network/go-perun/channel"
 	"perun.network/go-perun/channel/multi"
-	"perun.network/perun-stellar-backend/channel/types"
 )
 
 // EthereumIndex represents the index for Ethereum assets.
@@ -99,19 +98,15 @@ func MakePerunAssets(in []Asset, bs []int) ([]channel.Asset, error) {
 			}
 			out[i] = echannel.NewAsset(ethAsset.ChainID.Int, ethAsset.AssetHolder)
 		} else {
-			stellarAsset, ok := asset.(*StellarAsset)
+			solanaAsset, ok := asset.(*SolanaAsset)
 			if !ok {
-				return nil, errors.New("wrong asset type: expected StellarAsset")
+				return nil, errors.New("wrong asset type: expected SolanaAsset")
 			}
-			hash, err := StringToHash(stellarAsset.ContractID)
+			mint, err := StringToPublicKey(solanaAsset.Mint)
 			if err != nil {
 				return nil, err
 			}
-			add, err := types.MakeContractAddress(hash)
-			if err != nil {
-				return nil, err
-			}
-			out[i], _ = types.NewStellarAssetFromScAddress(add)
+			out[i] = schannel.NewSolanaCrossAssetFromMint(mint)
 		}
 	}
 	return out, nil

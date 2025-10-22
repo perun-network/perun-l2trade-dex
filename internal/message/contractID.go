@@ -1,35 +1,21 @@
 package message
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"fmt"
 
-	"github.com/stellar/go/xdr"
+	"github.com/gagliardetto/solana-go"
 )
 
-// HashToString converts xdr.Hash to a hex string
-func HashToString(hash xdr.Hash) string {
-	return hex.EncodeToString(hash[:])
+// PublicKeyToString converts solana.PublicKey to a base58 string
+func PublicKeyToString(pubKey solana.PublicKey) string {
+	return pubKey.String()
 }
 
-// StringToHash converts a hex string back to xdr.Hash
-func StringToHash(s string) (xdr.Hash, error) {
-	bytes, err := hex.DecodeString(s)
+// StringToPublicKey converts a hex string back to xdr.PublicKey
+func StringToPublicKey(s string) (solana.PublicKey, error) {
+	pubKey, err := solana.PublicKeyFromBase58(s)
 	if err != nil {
-		return xdr.Hash{}, fmt.Errorf("failed to decode hex string: %w", err)
+		return solana.PublicKey{}, fmt.Errorf("failed to decode hex string: %w", err)
 	}
-	var hash xdr.Hash
-	copy(hash[:], bytes)
-	return hash, nil
-}
-
-// GenerateRandomHash generates a random xdr.hash.
-func GenerateRandomHash() (xdr.Hash, error) {
-	var hash xdr.Hash
-	_, err := rand.Read(hash[:])
-	if err != nil {
-		return xdr.Hash{}, fmt.Errorf("failed to generate random hash: %w", err)
-	}
-	return hash, nil
+	return pubKey, nil
 }

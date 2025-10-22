@@ -43,9 +43,9 @@ func (c *Connection) SignETHData(addr common.Address, data []byte) (sig []byte, 
 	return
 }
 
-// SignSteData is a request to sign Stellar data.
-func (c *Connection) SignSteData(addr string, data []byte) (sig []byte, err error) {
-	req := &SignSteData{addr, data}
+// SignSolData is a request to sign Solana data.
+func (c *Connection) SignSolData(addr string, data []byte) (sig []byte, err error) {
+	req := &SignSolData{addr, data}
 	resp, err := c.Request(req)
 	if err != nil {
 		return

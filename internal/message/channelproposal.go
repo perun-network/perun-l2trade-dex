@@ -6,7 +6,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	ethwallet "github.com/perun-network/perun-eth-backend/wallet"
-	stewallet "perun.network/perun-stellar-backend/wallet/types"
+	solwallet "github.com/perun-network/perun-solana-backend/wallet"
 
 	"perun.network/go-perun/channel"
 	"perun.network/go-perun/client"
@@ -23,14 +23,14 @@ func (c *Connection) ChannelProposal(
 	if !ok {
 		ethAddress = &ethwallet.Address{}
 	}
-	steAddress, ok := lcp.Participant[SolanaIndex]
+	solAddress, ok := lcp.Participant[SolanaIndex]
 	if !ok {
-		steAddress = &stewallet.Participant{}
+		solAddress = &solwallet.Participant{}
 	}
 	req := &ChannelProposal{
 		ID:             lcp.ProposalID,
 		PeerAddressEth: common.Address(*ethAddress),
-		PeerAddressSte: steAddress.String(),
+		PeerAddressSol: solAddress.String(),
 		State:          state,
 	}
 	log.Println("State: ", state)

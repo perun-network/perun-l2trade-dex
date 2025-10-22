@@ -49,7 +49,7 @@ type (
 	// CrossContractInitialize represents the initialization message for crossChain blockchain.
 	CrossContractInitialize struct {
 		EthClientAddress common.Address `json:"ethClientAddress"`
-		SteClientAddress string         `json:"steClientAddress"`
+		SolClientAddress string         `json:"solClientAddress"`
 		EgoisticClient   bool           `json:"egoisticClient"`
 	}
 
@@ -183,7 +183,7 @@ type (
 	OpenChannel struct {
 		ProposalID        client.ProposalID `json:"proposalID"`
 		PeerAddressEth    common.Address    `json:"peerAddressEth"`
-		PeerAddressSte    string            `json:"peerAddressSte"`
+		PeerAddressSol    string            `json:"peerAddressSol"`
 		ChallengeDuration uint64            `json:"challengeDuration,string"`
 		State             ChannelState      `json:"state"`
 	}
@@ -200,7 +200,7 @@ type (
 	ChannelProposal struct {
 		ID             client.ProposalID `json:"ID"`
 		PeerAddressEth common.Address    `json:"peerAddressEth"`
-		PeerAddressSte string            `json:"peerAddressSte"`
+		PeerAddressSol string            `json:"peerAddressSol"`
 		State          ChannelState      `json:"state"`
 	}
 
@@ -245,7 +245,7 @@ type (
 	// ChannelInfo is the response to a GetChannelInfo request.
 	ChannelInfo struct {
 		PeerAddressEth common.Address `json:"peerAddressEth"`
-		PeerAddressSte string         `json:"peerAddressSte"`
+		PeerAddressSol string         `json:"peerAddressSol"`
 		State          ChannelState   `json:"state"`
 	}
 
@@ -265,8 +265,8 @@ type (
 		Data    []byte         `json:"data"`
 	}
 
-	// SignSteData is sent to the WebSocket client to request the signing of Data.
-	SignSteData struct {
+	// SignSolData is sent to the WebSocket client to request the signing of Data.
+	SignSolData struct {
 		Address string `json:"address"`
 		Data    []byte `json:"data"`
 	}
@@ -288,15 +288,15 @@ type (
 
 	// SendSteTx is sent to the WebSocket client to request the sending of a
 	// transaction.
-	// SendSteTx is also sent by the client to response the potentially modified
+	// SendSolTx is also sent by the client to response the potentially modified
 	// transaction.
-	SendSteTx struct {
+	SendSolTx struct {
 		Tx string `json:"transaction"`
 	}
 
-	// SendSteTxResponse is the response from the client to a SendETHTx request and
+	// SendSolTxResponse is the response from the client to a SendSolTx request and
 	// contains the signed transaction.
-	SendSteTxResponse struct {
+	SendSolTxResponse struct {
 		Tx string `json:"transaction"`
 	}
 
@@ -315,6 +315,65 @@ type (
 		ProposalID client.ProposalID `json:"proposalID"`
 		ChannelID  channel.ID        `json:"channelID"`
 		Err        string            `json:"error"`
+	}
+
+	// CreateOrder is sent by the maker to propose a new order to the peer.
+	CreateOrder struct {
+		Order Order `json:"order"`
+	}
+
+	// CreateOrderAck is returned by the taker (or your client) indicating local acceptance
+	// of displaying/keeping the order in the off-chain book; trade still requires ch.Update.
+	CreateOrderAck struct {
+		ID        OrderID `json:"id"`
+		Accepted  bool    `json:"accepted"`
+		Reason    string  `json:"reason,omitempty"`
+		TotalOpen uint64  `json:"totalOpen"`
+	}
+
+	// CancelOrder removes an active order from the off-chain book.
+	CancelOrder struct {
+		ChannelID channel.ID `json:"channelID"`
+		ID        OrderID    `json:"id"`
+		Reason    string     `json:"reason,omitempty"`
+	}
+
+	// CancelOrderAck confirms removal.
+	CancelOrderAck struct {
+		ID        OrderID `json:"id"`
+		Success   bool    `json:"success"`
+		Reason    string  `json:"reason,omitempty"`
+		TotalOpen uint64  `json:"totalOpen"`
+	}
+
+	// AcceptOrder signals the taker wants to accept an order; the maker then proceeds
+	// to invoke ch.Update (or the taker, depending on your trading protocol) to settle.
+	// This is a control-plane message; the asset movement will be in the channel update.
+	AcceptOrder struct {
+		ChannelID channel.ID `json:"channelID"`
+		ID        OrderID    `json:"id"`
+		// Optional: partial fill amount; omit for full fill.
+		Amount string `json:"amount,omitempty"`
+	}
+
+	// AcceptOrderAck returns the decision prior to any ch.Update.
+	AcceptOrderAck struct {
+		ID       OrderID `json:"id"`
+		Accepted bool    `json:"accepted"`
+		Reason   string  `json:"reason,omitempty"`
+	}
+
+	// GetOrderBook requests either a snapshot or a delta since the given sequence.
+	// If SinceSequence == 0, a snapshot should be returned.
+	GetOrderBook struct {
+		ChannelID     channel.ID `json:"channelID"`
+		SinceSequence uint64     `json:"sinceSequence"`
+	}
+
+	// GetOrderBookResponse returns a snapshot or delta; only one of the fields is set.
+	GetOrderBookResponse struct {
+		Snapshot *OrderBookSnapshot `json:"snapshot,omitempty"`
+		Delta    *OrderBookDelta    `json:"delta,omitempty"`
 	}
 
 	// Error is sent as a response to notify the client/WebSocket about an error.
@@ -365,13 +424,23 @@ var messageTypes = map[string]reflect.Type{
 	(*SendSignedState)(nil).messageType():         reflect.ValueOf((*SendSignedState)(nil)).Type().Elem(),
 	(*SignedState)(nil).messageType():             reflect.ValueOf((*SignedState)(nil)).Type().Elem(),
 	(*SignETHData)(nil).messageType():             reflect.ValueOf((*SignETHData)(nil)).Type().Elem(),
-	(*SignSteData)(nil).messageType():             reflect.ValueOf((*SignSteData)(nil)).Type().Elem(),
+	(*SignSolData)(nil).messageType():             reflect.ValueOf((*SignSolData)(nil)).Type().Elem(),
 	(*SendETHTx)(nil).messageType():               reflect.ValueOf((*SendETHTx)(nil)).Type().Elem(),
 	(*SendETHTxResponse)(nil).messageType():       reflect.ValueOf((*SendETHTxResponse)(nil)).Type().Elem(),
-	(*SendSteTx)(nil).messageType():               reflect.ValueOf((*SendSteTx)(nil)).Type().Elem(),
-	(*SendSteTxResponse)(nil).messageType():       reflect.ValueOf((*SendSteTxResponse)(nil)).Type().Elem(),
+	(*SendSolTx)(nil).messageType():               reflect.ValueOf((*SendSolTx)(nil)).Type().Elem(),
+	(*SendSolTxResponse)(nil).messageType():       reflect.ValueOf((*SendSolTxResponse)(nil)).Type().Elem(),
 	(*SignResponse)(nil).messageType():            reflect.ValueOf((*SignResponse)(nil)).Type().Elem(),
 	(*FundingError)(nil).messageType():            reflect.ValueOf((*FundingError)(nil)).Type().Elem(),
+	(*OrderBookSnapshot)(nil).messageType():       reflect.ValueOf((*OrderBookSnapshot)(nil)).Type().Elem(),
+	(*OrderBookDelta)(nil).messageType():          reflect.ValueOf((*OrderBookDelta)(nil)).Type().Elem(),
+	(*CreateOrder)(nil).messageType():             reflect.ValueOf((*CreateOrder)(nil)).Type().Elem(),
+	(*CreateOrderAck)(nil).messageType():          reflect.ValueOf((*CreateOrderAck)(nil)).Type().Elem(),
+	(*CancelOrder)(nil).messageType():             reflect.ValueOf((*CancelOrder)(nil)).Type().Elem(),
+	(*CancelOrderAck)(nil).messageType():          reflect.ValueOf((*CancelOrderAck)(nil)).Type().Elem(),
+	(*AcceptOrder)(nil).messageType():             reflect.ValueOf((*AcceptOrder)(nil)).Type().Elem(),
+	(*AcceptOrderAck)(nil).messageType():          reflect.ValueOf((*AcceptOrderAck)(nil)).Type().Elem(),
+	(*GetOrderBook)(nil).messageType():            reflect.ValueOf((*GetOrderBook)(nil)).Type().Elem(),
+	(*GetOrderBookResponse)(nil).messageType():    reflect.ValueOf((*GetOrderBookResponse)(nil)).Type().Elem(),
 	(*Error)(nil).messageType():                   reflect.ValueOf((*Error)(nil)).Type().Elem(),
 	(*Success)(nil).messageType():                 reflect.ValueOf((*Success)(nil)).Type().Elem(),
 	(*MockMessage)(nil).messageType():             reflect.ValueOf((*MockMessage)(nil)).Type().Elem(),
@@ -411,13 +480,23 @@ func (*ChannelInfo) messageType() string             { return "ChannelInfo" }
 func (*GetSignedState) messageType() string          { return "GetSignedState" }
 func (*SignedState) messageType() string             { return "SignedState" }
 func (*SignETHData) messageType() string             { return "SignETHData" }
-func (*SignSteData) messageType() string             { return "SignSteData" }
+func (*SignSolData) messageType() string             { return "SignSolData" }
 func (*SendETHTx) messageType() string               { return "SendETHTx" }
 func (*SendETHTxResponse) messageType() string       { return "SendETHTxResponse" }
-func (*SendSteTx) messageType() string               { return "SendSteTx" }
-func (*SendSteTxResponse) messageType() string       { return "SendSteTxResponse" }
+func (*SendSolTx) messageType() string               { return "SendSolTx" }
+func (*SendSolTxResponse) messageType() string       { return "SendSolTxResponse" }
 func (*SignResponse) messageType() string            { return "SignResponse" }
 func (*Success) messageType() string                 { return "Success" }
+func (*OrderBookSnapshot) messageType() string       { return "OrderBookSnapshot" }
+func (*OrderBookDelta) messageType() string          { return "OrderBookDelta" }
+func (*CreateOrder) messageType() string             { return "CreateOrder" }
+func (*CreateOrderAck) messageType() string          { return "CreateOrderAck" }
+func (*CancelOrder) messageType() string             { return "CancelOrder" }
+func (*CancelOrderAck) messageType() string          { return "CancelOrderAck" }
+func (*AcceptOrder) messageType() string             { return "AcceptOrder" }
+func (*AcceptOrderAck) messageType() string          { return "AcceptOrderAck" }
+func (*GetOrderBook) messageType() string            { return "GetOrderBook" }
+func (*GetOrderBookResponse) messageType() string    { return "GetOrderBookResponse" }
 func (*FundingError) messageType() string            { return "FundingError" }
 func (*Error) messageType() string                   { return "Error" }
 func (*MockMessage) messageType() string             { return "MockMessage" }
@@ -539,13 +618,13 @@ func (msg SolanaInitialize) ParseClientAddress() (interface{}, error) {
 
 // ClientAddresses contains the client addresses for crossChain blockchain.
 type ClientAddresses struct {
-	SteClientAddress string
+	SolClientAddress string
 	EthClientAddress common.Address
 }
 
 // ParseClientAddress parses the client address for crossChain blockchain.
 func (msg CrossContractInitialize) ParseClientAddress() (interface{}, error) {
-	return ClientAddresses{msg.SteClientAddress, msg.EthClientAddress}, nil
+	return ClientAddresses{msg.SolClientAddress, msg.EthClientAddress}, nil
 }
 
 // Initialize is the initial message expected to be sent by the WebSocket

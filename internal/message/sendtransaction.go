@@ -6,7 +6,7 @@ import (
 	"log"
 
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/stellar/go/txnbuild"
+	"github.com/gagliardetto/solana-go"
 )
 
 // SendETHTx is a request to send an Ethereum transaction.
@@ -34,15 +34,17 @@ func (c *Connection) SendETHTx(tx *types.Transaction, chainID ChainID) (_tx *typ
 	return
 }
 
-// SendSteTx is a request to send a Stellar transaction.
-func (c *Connection) SendSteTx(xdrString string) (_tx *txnbuild.Transaction, err error) {
-	req := &SendSteTx{xdrString}
+// SendSolTx is a request to send a Solana transaction.
+func (c *Connection) SendSolTx(tx *solana.Transaction) (_tx *solana.Transaction, err error) {
+	txString := tx.MustToBase64()
+
+	req := &SendSolTx{txString}
 	resp, err := c.Request(req)
 	if err != nil {
 		return nil, err
 	}
 
-	_resp, ok := resp.(*SendSteTxResponse)
+	_resp, ok := resp.(*SendSolTxResponse)
 	if !ok {
 		if errMsg, ok := resp.(*Error); ok {
 			err = fmt.Errorf("sendTx: %v", errMsg.Err)
@@ -57,17 +59,11 @@ func (c *Connection) SendSteTx(xdrString string) (_tx *txnbuild.Transaction, err
 		return nil, err
 	}
 
-	transaction, err := txnbuild.TransactionFromXDR(_resp.Tx)
+	transaction, err := solana.TransactionFromBase64(_resp.Tx)
 	if err != nil {
-		log.Println("Error: invalid xdr: ", err)
+		log.Println("Error: invalid base64: ", err)
 		return nil, err
 	}
 
-	tx, ok := transaction.Transaction()
-	if !ok {
-		log.Println("Error: could not parse transaction from string")
-		return nil, errors.New("Could not parse transaction from string")
-	}
-	_tx = tx
-	return _tx, err
+	return transaction, err
 }

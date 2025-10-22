@@ -22,26 +22,31 @@ func startClient(conn *websocket.Conn, cfg client.Config) {
 		return
 	}
 
-	initMsg, ok := msg.(*message.Initialize)
-
-	if !ok {
+	initMsg, err := message.Initialize(msg)
+	if err != nil {
 		log.Warnf("expected initialization message, got %T", msg)
 		return
 	}
 
-	clientAddr := initMsg.ClientAddress
-	egoisticClient := initMsg.EgoisticClient
-	c, err := clients.Register(clientAddr, mconn, cfg, egoisticClient)
-	if err != nil {
-		if err := mconn.CloseWithError(err); err != nil {
-			log.Error(err)
+	// Handle CC initialization message
+	if crossInitMsg, ok := initMsg.(*message.CrossContractInitialize); ok {
+		log.Println("Got cross-contract init message")
+		// Create L1 and L2 Addresses for client
+		solClientAddr := crossInitMsg.SolClientAddress
+		ethClientAddr := crossInitMsg.EthClientAddress
+		c, err := clients.Register(ethClientAddr, solClientAddr, mconn, cfg)
+		if err != nil {
+			if err := mconn.CloseWithError(err); err != nil {
+				log.Error(err)
+			}
+			return
 		}
-		return
+
+		mconn.SetOnCloseHandler(func() {
+			clients.Remove(ethClientAddr.String())
+			clients.Remove(solClientAddr)
+		})
+
+		go c.Run()
 	}
-
-	mconn.SetOnCloseHandler(func() {
-		clients.Remove(clientAddr)
-	})
-
-	go c.Run()
 }

@@ -1,6 +1,10 @@
+<<<<<<< HEAD
 # Perun DEX WebSocket
+=======
+# Perun DEX WebSocket Node
+>>>>>>> 5c2da37 (feat(internal): add client and order book logic)
 
-A WebSocket-based backend demonstrating Perun payment channels for ETH/SOL asset swapping between Alice and Bob.
+A WebSocket-based Perun client node for cross-ledger state channels on Ethereum and Solana, featuring on-chain chain/asset configuration and an off-chain order book integrated into the same WebSocket flow.
 
 ## Features
 
@@ -15,14 +19,15 @@ A WebSocket-based backend demonstrating Perun payment channels for ETH/SOL asset
 ```
 ├── cmd/server/           # Main server application
 ├── internal/
-│   ├── websocket/       # WebSocket hub and message handlers
-│   ├── types/           # Type definitions and message structures
-│   ├── perun/           # Perun client integration (placeholder)
-│   └── swap/            # Swap logic and exchange rates
-├── web/                 # Frontend interface
-│   └── index.html       # Demo web interface
-├── go.mod               # Go module dependencies
-└── README.md           # This file
+│   ├── websocket/        # WebSocket hub and message handlers
+│   ├── message/          # Type definitions and message structures
+│   ├── client/           # Perun client wrapper, channel store, request handler, and order book routing hook.
+│   └── wallet/           # Wallet definition
+│   └── orderbook/        # In-memory per-channel order book engine and optional streaming WS endpoint.
+├── web/                  # Frontend interface
+│   └── index.html        # Demo web interface
+├── go.mod                # Go module dependencies
+└── README.md             # This file
 ```
 
 ## Demo Flow
@@ -56,13 +61,39 @@ go mod tidy
 
 3. Run the server:
 ```bash
-go run cmd/server/main.go
+go run cmd/server/main.go \
+  -addr 127.0.0.1:8080 \
+  -ethChains chains.yaml \
+  -solChains chains_solana.yaml \
+  -defaultTimeout 1m \
+  -handleTimeout 5m \
+  -fundTimeout 10m \
+  -settleTimeout 10m \
+  -finalityDepth 1 \
+  -predefinedGasLimit=false \
+  -cert "" \
+  -certKey ""
 ```
 
-4. Open your browser and navigate to:
+Runtime flags:
+```bash
+-addr: HTTP/WebSocket listen address, default 127.0.0.1:8080.​
+
+-ethChains: Ethereum chains YAML, default chains.yaml.​
+
+-solChains: Solana chains YAML, default chains_solana.yaml.​
+
+-cert, -certKey: TLS certificate and key for HTTPS; omit for HTTP.​
+
+-defaultTimeout, -handleTimeout, -fundTimeout, -settleTimeout: operation timeouts.​
+
+-finalityDepth: required chain confirmations for transactions.​
+
+-predefinedGasLimit: enable predefined gas limits for adjudicator/depositors.​
+
+-horizonURL: compatibility flag retained; not used for Solana in this setup.​
 ```
-http://localhost:8080
-```
+
 
 ### Usage Instructions
 
@@ -88,110 +119,43 @@ http://localhost:8080
 
 ### WebSocket Messages
 
-#### Client Registration
-```json
-{
-  "type": "register",
-  "data": {
-    "user_id": "alice",
-    "address": "0x742d35Cc6634C0532925a3b8D2Ba8d1FF4dA7e42",
-    "is_alice": true
-  }
-}
+Primary control plane:
+
+`ws://<host>/connect` expects an initialization message and then supports typed JSON requests for chain queries, balances, channel operations, and the order book control API.​
+
+Optional streaming feed:
+
+`ws://<host>/ws/orderbook?channel=<channel_id>` streams an initial OrderBookSnapshot and subsequent OrderBookDelta updates in sequence order.​
+
+### Order book API
+Messages over `/connect`:
+
 ```
+CreateOrder -> CreateOrderAck: Insert a new order into the per-channel book.​
 
-#### Channel Creation
-```json
-{
-  "type": "create_channel",
-  "data": {
-    "partner_user_id": "bob",
-    "initial_balances": {
-      "ETH": "5000000000000000000",
-      "SOL": "0"
-    },
-    "challenge_duration": 3600
-  }
-}
+CancelOrder -> CancelOrderAck: Remove an active order by ID.​
+
+AcceptOrder -> AcceptOrderAck: Signal acceptance intent; settlement follows via a Perun channel update.​
+
+GetOrderBook -> GetOrderBookResponse: Return a snapshot of the current per-channel book.​
 ```
+Streaming deltas over `/ws/orderbook`:
 
-#### Swap Proposal
-```json
-{
-  "type": "swap_propose",
-  "data": {
-    "channel_id": "uuid",
-    "from_asset": "ETH",
-    "to_asset": "SOL",
-    "from_amount": "1000000000000000000",
-    "to_amount": "50000000000",
-    "exchange_rate": "50.0"
-  }
-}
-```
+Initial `OrderBookSnapshot` frame followed by `OrderBookDelta` frames that include added/updated/removed orders and totalOpen with a monotonic sequence.
 
-#### Swap Acceptance
-```json
-{
-  "type": "swap_accept",
-  "data": {
-    "channel_id": "uuid",
-    "swap_id": "uuid"
-  }
-}
-```
+## Typical Flow
+- Connect to `/connect` and initialize in Cross-Contract mode with ETH and SOL client addresses.​
 
-## Exchange Rates
+- Query `GetChains/GetAssets` to discover known networks and assets from your YAML config.​
 
-Current mock exchange rates:
-- 1 ETH = 50 SOL
-- 1 SOL = 0.02 ETH
+- Open a Perun channel and exchange updates using `OpenChannel/UpdateChannel/CloseChannel.`​
 
-## Technical Implementation
+- CreateOrder to propose a trade; the counterparty uses `AcceptOrder` then executes a channel update to settle balances off-chain.​
 
-### WebSocket Hub
-- Manages client connections and message routing
-- Handles channel state management
-- Broadcasts messages to channel participants
+- Subscribe to `/ws/orderbook` for live deltas while maintaining a local snapshot.​
 
-### Message Handlers
-- `handleRegister`: Client registration and authentication
-- `handleCreateChannel`: Payment channel creation
-- `handleSwapPropose`: Swap proposal processing
-- `handleSwapAccept/Reject`: Swap response handling
-- `handleSettle`: Channel settlement
 
-### Asset Management
-- ETH amounts in wei (1 ETH = 10^18 wei)
-- SOL amounts in lamports (1 SOL = 10^9 lamports)
-- Big integer arithmetic for precise calculations
-
-## Development Notes
-
-This is a demonstration implementation focusing on the WebSocket communication layer and UI interaction. In a production environment, you would need to integrate with:
-
-- Real Perun Go client implementation
-- Actual blockchain connections (Ethereum, Solana)
-- Proper cryptographic signatures
-- State channel consensus mechanisms
-- Real exchange rate feeds
-
-## Testing
-
-The web interface provides a complete testing environment:
-- Real-time message logging
-- Interactive controls for both Alice and Bob
-- Visual feedback for connection status and balances
-- Error handling and display
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the Apache 2.0 License - see the [LICENSE](LICENSE) file for details.

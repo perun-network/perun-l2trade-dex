@@ -43,12 +43,12 @@ func unmarshalAsset(data []byte) (Asset, error) {
 			return nil, err
 		}
 		asset = &ethAsset
-	case "Stellar":
-		var stellarAsset StellarAsset
-		if err := json.Unmarshal(temp.Asset, &stellarAsset); err != nil {
+	case "Solana":
+		var solanaAsset SolanaAsset
+		if err := json.Unmarshal(temp.Asset, &solanaAsset); err != nil {
 			return nil, err
 		}
-		asset = &stellarAsset
+		asset = &solanaAsset
 	default:
 		return nil, fmt.Errorf("unsupported asset type: %s", assetType.AssetType)
 	}
