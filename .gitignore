@@ -27,13 +27,6 @@ go.work.sum
 # env file
 .env
 
-# Editor/IDE
-# .idea/
-# .vscode/
-
-# Project specific binaries
-perun-dex-server
-perun-dex-server_unix
 
 # Logs
 *.log
@@ -41,3 +34,11 @@ perun-dex-server_unix
 # Local development
 .DS_Store
 Thumbs.db
+
+
+.vscode/
+
+# Solana Local Network
+test-ledger/
+internal/deploy/solana/scripts/accounts
+internal/deploy/solana/scripts/addresses

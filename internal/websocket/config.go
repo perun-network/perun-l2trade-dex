@@ -10,7 +10,8 @@ import (
 
 	"github.com/gagliardetto/solana-go"
 	"github.com/spf13/viper"
-	"perun.network/perun-stellar-backend/channel/types"
+
+	solchannel "github.com/perun-network/perun-solana-backend/channel"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/mitchellh/mapstructure"
@@ -139,19 +140,19 @@ func ParseSolanaChainsConfig(file string) (SolanaChainsConfig, error) {
 	}
 
 	// Is used for checking for duplicate asset codes.
-	assetCodes := make(map[types.ContractLID]bool)
+	assetCodes := make(map[solchannel.ContractLID]bool)
 
 	fmt.Println("Checking for duplicate asset codes", chainsFile)
 	// Apply the chain's ID to each asset of this chain and check for duplicate
 	// asset codes.
 	for _, c := range chainsFile.Chains {
 		for _, a := range c.Assets {
-			stea := a
-			if _, ok := assetCodes[types.MakeContractID(stea.Code)]; ok {
+			sola := a
+			if _, ok := assetCodes[solchannel.MakeContractID(sola.Code)]; ok {
 				log.Println("Duplicate asset code")
-				return SolanaChainsConfig{}, errors.Errorf("duplicate asset code %v", stea.Code)
+				return SolanaChainsConfig{}, errors.Errorf("duplicate asset code %v", sola.Code)
 			}
-			assetCodes[types.MakeContractID(stea.Code)] = true
+			assetCodes[solchannel.MakeContractID(sola.Code)] = true
 		}
 	}
 	log.Println("Returning chains file")
@@ -269,43 +270,45 @@ func parseEthereumConfigTypes() mapstructure.DecodeHookFunc {
 // parseSolanaConfigTypes is used by viper to parse the custom types out of the config file.
 func parseSolanaConfigTypes() mapstructure.DecodeHookFunc {
 	return func(from reflect.Type, to reflect.Type, data interface{}) (interface{}, error) {
-		switch to {
-		case message.ReflectSolanaAssetType:
-			fmt.Println("parsing asset type", from, to, data)
-			assType, ok := data.(string)
-			fmt.Println(assType)
+		switch {
+		// Solana asset type
+		case to == message.ReflectSolanaAssetType:
+			s, ok := data.(string)
 			if !ok {
-				return nil, errors.New("expected a string for asset type")
+				return nil, errors.Errorf("expected string for Solana asset type, got %T", data)
 			}
-			return message.ParseSolanaAssetType(assType)
-		case reflect.TypeOf(message.ChainID{}):
-			fmt.Println("parsing chain id", from, to, data)
-			var chID int64
-			switch d := data.(type) {
+			return message.ParseSolanaAssetType(s)
+
+		// ChainID
+		case to == reflect.TypeOf(message.ChainID{}):
+			switch v := data.(type) {
 			case int:
-				chID = int64(d)
+				return message.MakeChainID(big.NewInt(int64(v))), nil
+			case int64:
+				return message.MakeChainID(big.NewInt(v)), nil
 			case string:
-				i, err := strconv.Atoi(d)
+				i, err := strconv.ParseInt(v, 10, 64)
 				if err != nil {
-					return nil, errors.Wrap(err, "parsing chain ID")
+					return nil, errors.Wrap(err, "invalid chainID")
 				}
-				chID = int64(i)
+				return message.MakeChainID(big.NewInt(i)), nil
 			default:
-				return nil, errors.New("unsupported type for chain ID")
+				return nil, errors.Errorf("unsupported type for chainID: %T", data)
 			}
-			return message.MakeChainID(big.NewInt(chID)), nil
-		case reflect.TypeOf(message.Mint("")):
-			mint, ok := data.(string)
+
+		// Mint (only apply if target type is *exactly* message.Mint)
+		case to.Kind() == reflect.String && to.Name() == "Mint":
+			s, ok := data.(string)
 			if !ok {
-				return nil, errors.New("expected a string for mint address")
+				return nil, errors.Errorf("expected string for mint, got %T", data)
 			}
-			// Accept empty string as valid (for native SOL)
-			if mint != "" {
-				if _, err := solana.PublicKeyFromBase58(mint); err != nil {
+			if s != "" {
+				if _, err := solana.PublicKeyFromBase58(s); err != nil {
 					return nil, errors.Wrap(err, "invalid base58 mint address")
 				}
 			}
-			return message.MakeMint(mint), nil
+			return message.MakeMint(s), nil
+
 		default:
 			return data, nil
 		}

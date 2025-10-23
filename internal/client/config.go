@@ -18,7 +18,6 @@ type (
 		EthChains       EthereumChainMap
 		SolChains       SolanaChainMap
 		GasLimits       GasLimits
-		HorizonURL      string
 	}
 
 	// Timeouts contains the timeouts for the client.

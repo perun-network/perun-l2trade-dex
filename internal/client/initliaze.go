@@ -13,7 +13,6 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/gagliardetto/solana-go"
-	"github.com/gagliardetto/solana-go/rpc"
 	"github.com/perun-network/perun-dex-websocket/internal/message"
 	wwallet "github.com/perun-network/perun-dex-websocket/internal/wallet"
 	ethchannel "github.com/perun-network/perun-eth-backend/channel"
@@ -100,7 +99,7 @@ func newPerunClient(
 		nil,
 		solAcc,
 		sender,
-		rpc.LocalNet_RPC, // Use the localnet RPC URL
+		cfg.SolChains[0].NodeURL,
 	)
 	cb := solclient.NewContractBackend(*tc, solchannel.BackendID)
 

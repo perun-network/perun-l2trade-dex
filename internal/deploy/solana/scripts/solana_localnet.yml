@@ -1,0 +1,20 @@
+session_name: solana-localnet
+start_directory: .
+before_script: ./setup_localnet.sh
+
+windows:
+      - window_name: solana
+        layout: tiled
+        panes:
+              - shell_command:
+                      - solana-test-validator --reset --ticks-per-slot 10
+              - shell_command:
+                      - sleep 5
+                      - ./print_accounts.sh
+              - shell_command:
+                      - sleep 5
+                      - ./deploy_program.sh
+                      - solana logs
+              - shell_command:
+                      - sleep 5
+                      - ./mint_and_fund_token.sh

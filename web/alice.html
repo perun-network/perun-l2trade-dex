@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alice - Perun DEX</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <header>
+        <h1>👤 Alice - Perun DEX Client</h1>
+        <p>Channel Initiator & Trader</p>
+        <a href="index.html" class="back-link">← Back to Home</a>
+    </header>
+
+    <div class="single-user-container">
+        <div class="status-bar">
+            <div class="status-item">
+                <span class="status-label">Connection:</span>
+                <div class="status-indicator" id="connection-status">Disconnected</div>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Channel:</span>
+                <div class="status-indicator" id="channel-status">No Channel</div>
+            </div>
+            <button onclick="client.disconnect()" class="disconnect-btn" id="disconnect-btn" style="display:none;">
+                Disconnect
+            </button>
+        </div>
+
+        <!-- Wallet Connection Section -->
+        <div class="card">
+            <h2>🔌 Wallet Connection</h2>
+            <div class="wallet-display">
+                <div class="wallet-item">
+                    <strong>🦊 MetaMask (Ethereum):</strong>
+                    <code id="eth-address">Not connected</code>
+                </div>
+                <div class="wallet-item">
+                    <strong>👻 Phantom (Solana):</strong>
+                    <code id="sol-address">Not connected</code>
+                </div>
+            </div>
+            <button onclick="client.connectWallets()" id="connect-btn" class="primary-btn">
+                Connect Wallets
+            </button>
+        </div>
+
+        <!-- Channel Management -->
+        <div class="card">
+            <h2>📡 Payment Channel</h2>
+
+            <div class="form-section">
+                <h3>Create New Channel</h3>
+                <div class="form-group">
+                    <label>Bob's Ethereum Address:</label>
+                    <input type="text" id="peer-eth-addr" placeholder="0x...">
+                </div>
+                <div class="form-group">
+                    <label>Bob's Solana Address:</label>
+                    <input type="text" id="peer-sol-addr" placeholder="Base58...">
+                </div>
+
+                <div class="balance-grid">
+                    <div class="balance-section">
+                        <h4>Alice's Initial Deposit</h4>
+                        <input type="number" id="my-eth" placeholder="ETH amount" value="5" step="0.1">
+                        <input type="number" id="my-sol" placeholder="SOL amount" value="0" step="1">
+                    </div>
+                    <div class="balance-section">
+                        <h4>Bob's Initial Deposit</h4>
+                        <input type="number" id="peer-eth" placeholder="ETH amount" value="0" step="0.1">
+                        <input type="number" id="peer-sol" placeholder="SOL amount" value="1000" step="1">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Challenge Duration (seconds):</label>
+                    <input type="number" id="challenge-duration" value="3600">
+                </div>
+
+                <button onclick="client.openChannel()" class="primary-btn">
+                    Open Payment Channel
+                </button>
+            </div>
+
+            <div class="channel-info" id="channel-info" style="display:none;">
+                <h3>Active Channel Info</h3>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span>Channel ID:</span>
+                        <code id="channel-id">-</code>
+                    </div>
+                    <div class="info-item">
+                        <span>My Index:</span>
+                        <code id="my-index">-</code>
+                    </div>
+                    <div class="info-item">
+                        <span>Peer:</span>
+                        <code id="peer-id">-</code>
+                    </div>
+                </div>
+
+                <div class="balance-display">
+                    <div class="balance-column">
+                        <h4>Alice's Balances</h4>
+                        <div id="my-balances" class="balance-list">-</div>
+                    </div>
+                    <div class="balance-column">
+                        <h4>Bob's Balances</h4>
+                        <div id="peer-balances" class="balance-list">-</div>
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button onclick="client.refreshChannel()" class="secondary-btn">
+                        Refresh Info
+                    </button>
+                    <button onclick="client.closeChannel()" class="danger-btn">
+                        Close Channel
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Order Book -->
+        <div class="card">
+            <h2>📖 Order Book</h2>
+
+            <div class="order-form">
+                <h3>Create New Order</h3>
+                <div class="form-row">
+                    <select id="order-side">
+                        <option value="bid">Buy (Bid)</option>
+                        <option value="ask">Sell (Ask)</option>
+                    </select>
+                    <input type="text" id="base-asset" placeholder="Base (e.g., ETH)" value="ETH">
+                    <input type="text" id="quote-asset" placeholder="Quote (e.g., SOL)" value="SOL">
+                </div>
+                <div class="form-row">
+                    <input type="number" id="order-price" placeholder="Price" value="50" step="0.01">
+                    <input type="text" id="order-amount" placeholder="Amount (base units)" value="1000000000000000000">
+                </div>
+                <button onclick="client.createOrder()" class="primary-btn">
+                    Create Order
+                </button>
+            </div>
+
+            <div class="orders-container">
+                <div class="orders-section">
+                    <h3 class="bids-header">🟢 Bids (Buy Orders)</h3>
+                    <div id="bids-list" class="orders-list">
+                        <p class="empty-message">No bid orders</p>
+                    </div>
+                </div>
+                <div class="orders-section">
+                    <h3 class="asks-header">🔴 Asks (Sell Orders)</h3>
+                    <div id="asks-list" class="orders-list">
+                        <p class="empty-message">No ask orders</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Activity Log -->
+        <div class="card">
+            <h2>📝 Activity Log</h2>
+            <div id="log-container" class="log-display"></div>
+            <button onclick="client.clearLog()" class="secondary-btn">Clear Log</button>
+        </div>
+    </div>
+
+    <script>const USER_NAME = 'Alice';</script>
+    <script src="js/wallet.js"></script>
+    <script src="js/websocket.js"></script>
+    <script src="js/channel.js"></script>
+    <script src="js/orderbook.js"></script>
+    <script src="js/client.js"></script>
+</body>
+
+</html>

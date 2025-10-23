@@ -54,7 +54,7 @@ func (r *Registry) Register(eaddr common.Address, saddr string, conn *message.Co
 		}
 	}
 	if _, ok := r.l2Addresses[saddr]; ok && saddr != "" {
-		return nil, fmt.Errorf("client with same stellar address already registered")
+		return nil, fmt.Errorf("client with same solana address already registered")
 	}
 
 	c, err := NewClient(conn, sk, eaddr, saddr, cfg, r)

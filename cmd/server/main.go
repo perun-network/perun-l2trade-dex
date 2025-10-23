@@ -4,13 +4,15 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"net/http"
 	"os"
 	"time"
 
 	"github.com/perun-network/perun-dex-websocket/internal/client"
+	"github.com/perun-network/perun-dex-websocket/internal/deploy/ethereum"
 	"github.com/perun-network/perun-dex-websocket/internal/websocket"
 )
+
+const ()
 
 var (
 	runCmd = flag.NewFlagSet("run", flag.ExitOnError)
@@ -19,18 +21,6 @@ var (
 func main() {
 	args := os.Args[1:]
 	run(args)
-}
-
-func serveHome(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/" {
-		http.Error(w, "Not found", http.StatusNotFound)
-		return
-	}
-	if r.Method != "GET" {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-	http.ServeFile(w, r, "web/index.html")
 }
 
 func run(args []string) {
@@ -46,7 +36,6 @@ func run(args []string) {
 		settleTimeout      = runCmd.Duration("settleTimeout", 10*time.Minute, "Timeout for settling channels")
 		runTxFinalityDepth = runCmd.Uint64("finalityDepth", 1, "Number of confirmations required to confirm a blockchain transaction")
 		predefinedGasLimit = runCmd.Bool("predefinedGasLimit", false, "Predefined gas limit for all transactions")
-		horizonURL         = runCmd.String("horizonURL", "http://localhost:8000", "URL of the Stellar Horizon server")
 	)
 	err := runCmd.Parse(args)
 	if err != nil {
@@ -64,6 +53,16 @@ func run(args []string) {
 		log.Fatalf("parsing chain config file: %v", err)
 	}
 
+	// Deploy Ethereum contracts.
+	fmt.Println("Deploying Ethereum contracts...")
+	adj, ah := ethereum.DeployContracts(ethChainsConfig.Chains[0].NodeURL, ethChainsConfig.Chains[0].ChainID.Uint64(), ethChainsConfig.Chains[0].DeployerSK)
+	fmt.Println("Deployed Ethereum contracts:")
+	fmt.Println("  Adjudicator:", adj.Hex())
+	fmt.Println("  Asset Holder:", ah.Hex())
+
+	ethChainsConfig.Chains[0].Adjudicator = adj
+	ethChainsConfig.Chains[0].Assets[0].AssetHolder = ah
+
 	cfg := websocket.Config{
 		WSAddress:      *addr,
 		TLSCertificate: *cert,
@@ -79,7 +78,6 @@ func run(args []string) {
 				SettleTimeout:  *settleTimeout,
 			},
 			TxFinalityDepth: *runTxFinalityDepth,
-			HorizonURL:      *horizonURL,
 		},
 	}
 	fmt.Println("cfg: ", solChainsConfig.AssetMap())

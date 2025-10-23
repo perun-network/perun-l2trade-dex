@@ -16,7 +16,7 @@ import (
 	confirm "github.com/gagliardetto/solana-go/rpc/sendAndConfirmTransaction"
 )
 
-// WebSocketSender implements the sender interface of the stellar backend to sign and send stellar transactions.
+// WebSocketSender implements the sender interface of the solana backend to sign and send solana transactions.
 type WebSocketSender struct {
 	conn      *message.Connection
 	add       *solana.PublicKey

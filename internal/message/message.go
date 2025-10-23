@@ -9,8 +9,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 
-	"github.com/stellar/go/keypair"
-
 	"perun.network/go-perun/channel"
 	"perun.network/go-perun/client"
 )
@@ -609,11 +607,7 @@ func (msg EthereumInitialize) ParseClientAddress() (interface{}, error) {
 
 // ParseClientAddress parses the client address for Solana blockchain.
 func (msg SolanaInitialize) ParseClientAddress() (interface{}, error) {
-	kp, err := keypair.Parse(msg.ClientAddress)
-	if err != nil {
-		return nil, err
-	}
-	return kp, nil
+	return msg.ClientAddress, nil
 }
 
 // ClientAddresses contains the client addresses for crossChain blockchain.

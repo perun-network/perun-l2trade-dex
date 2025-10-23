@@ -11,7 +11,6 @@ import (
 	solwallet "github.com/perun-network/perun-solana-backend/wallet"
 	"github.com/pkg/errors"
 	"perun.network/go-perun/wallet"
-	"perun.network/perun-stellar-backend/wallet/types"
 )
 
 var (
@@ -68,8 +67,8 @@ func (a SolAccount) SignData(data []byte) (sig []byte, err error) {
 	return a.addr.SignData(data)
 }
 
-func GetParticipant(addr wallet.Address) *types.Participant {
-	return types.AsParticipant(addr)
+func GetParticipant(addr wallet.Address) *solwallet.Participant {
+	return solwallet.AsParticipant(addr)
 }
 
 func GetAccount(addr wallet.Address) wallet.Account {

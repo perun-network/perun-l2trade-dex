@@ -2,7 +2,7 @@ package wallet
 
 import (
 	"github.com/perun-network/perun-dex-websocket/internal/message"
-	"perun.network/perun-stellar-backend/wallet/types"
+	solwallet "github.com/perun-network/perun-solana-backend/wallet"
 
 	ethwallet "github.com/perun-network/perun-eth-backend/wallet"
 	"github.com/pkg/errors"
@@ -56,7 +56,7 @@ func NewSolWallet(conn *message.Connection) *SolWallet {
 
 // Unlock unlocks the given address.
 func (w *SolWallet) Unlock(addr wallet.Address) (acc wallet.Account, err error) {
-	_addr, ok := addr.(*types.Participant)
+	_addr, ok := addr.(*solwallet.Participant)
 	if !ok {
 		err = errors.New("address has invalid type")
 		return

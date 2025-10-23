@@ -112,7 +112,7 @@ func (c *Client) CloseWithError(err error) {
 func (c *Client) checkAssets(assets []message.Asset) error {
 	for _, a := range assets {
 		var supported bool
-		// Check if the asset is supported by the stellar chain.
+		// Check if the asset is supported by the solana chain.
 		asset, ok := a.(*message.SolanaAsset)
 		if ok {
 			_, ok := c.solChains[0].Assets[asset.Code()]

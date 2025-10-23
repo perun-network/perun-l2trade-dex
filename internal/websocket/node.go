@@ -17,6 +17,8 @@ var upgrader = websocket.Upgrader{
 
 // Run runs the node by handling requests to /connect.
 func Run(config Config) {
+	http.Handle("/", http.FileServer(http.Dir("./web")))
+
 	http.HandleFunc("/connect", func(w http.ResponseWriter, r *http.Request) {
 		connect(w, r, config.ClientConfig)
 	})
