@@ -78,7 +78,6 @@ func (c *Client) handleOpenChannel(msg *message.OpenChannel) (err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), c.Timeouts.HandleTimeout+c.Timeouts.FundTimeout)
 	defer cancel()
 	ch, err := c.perunClient.ProposeChannel(ctx, prop)
-
 	c.channelCreated(ch, err, msg.ProposalID)
 	return err
 }
@@ -137,11 +136,6 @@ func (c *Client) handleCloseChannel(msg *message.CloseChannel) (err error) {
 		return
 	}
 	c.log(fmt.Sprintf("Settled channel %x", ch.ID()))
-
-	err = ch.Close()
-	if err != nil {
-		return
-	}
 	return
 }
 
@@ -252,11 +246,10 @@ func (c *Client) channelCreated(ch *client.Channel, chErr error, propID client.P
 // ChannelClosed message to the client.
 func (c *Client) channelClosed(chID channel.ID) {
 	c.log(fmt.Sprintf("Closed channel %x", chID))
-	c.removeChannel(chID)
 
 	err := c.conn.Write(&message.ChannelClosed{ID: chID})
 	if err != nil {
-		c.log("sending channel closed message")
+		c.log("sending channel closed message", err)
 	}
 }
 

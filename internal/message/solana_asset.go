@@ -128,6 +128,7 @@ func (a *SolanaAsset) UnmarshalJSON(data []byte) error {
 	}
 
 	a.Mint = raw.Mint
+	fmt.Println("Unmarshaled Solana asset with mint:", a.Mint)
 	return nil
 }
 
@@ -151,6 +152,9 @@ func NewSolanaAsset(a SolanaAssetConfig) (*SolanaAsset, error) {
 
 // MakeSolanaAssets creates a slice of Assets from a slice of AssetConfig.
 func MakeSolanaAssets(a schannel.SolanaCrossAsset) SolanaAsset {
+	if a.Asset.IsSOL {
+		return SolanaAsset{Mint: ""}
+	}
 	return SolanaAsset{Mint: a.Asset.Mint.String()}
 }
 
@@ -232,6 +236,10 @@ func SolanaAssetArrayToMap(am []SolanaAssetConfig) SolanaAssetConfigMap {
 
 // StringToSolanaPublicKey converts a string to a solana.PublicKey.
 func StringToSolanaPublicKey(s string) (solana.PublicKey, error) {
+	if s == "" {
+		return solana.PublicKey{}, nil
+	}
+
 	pubKey, err := solana.PublicKeyFromBase58(s)
 	if err != nil {
 		return solana.PublicKey{}, err

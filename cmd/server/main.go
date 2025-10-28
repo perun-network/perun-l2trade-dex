@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/perun-network/perun-dex-websocket/internal/client"
 	"github.com/perun-network/perun-dex-websocket/internal/deploy/ethereum"
 	"github.com/perun-network/perun-dex-websocket/internal/websocket"
@@ -16,6 +17,7 @@ const ()
 
 var (
 	runCmd = flag.NewFlagSet("run", flag.ExitOnError)
+	ethah  = common.Address{}
 )
 
 func main() {
@@ -59,6 +61,7 @@ func run(args []string) {
 	fmt.Println("Deployed Ethereum contracts:")
 	fmt.Println("  Adjudicator:", adj.Hex())
 	fmt.Println("  Asset Holder:", ah.Hex())
+	ethereum.WriteFrontendConfig("./web/frontend_config.txt", ah)
 
 	ethChainsConfig.Chains[0].Adjudicator = adj
 	ethChainsConfig.Chains[0].Assets[0].AssetHolder = ah

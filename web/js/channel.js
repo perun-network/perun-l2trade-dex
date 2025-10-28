@@ -1,9 +1,48 @@
+
+async function loadEthAssetHolderFromTxt(path = "./frontend_config.txt") {
+    const resp = await fetch(path, { cache: "no-cache" }); // avoid stale cache
+    if (!resp.ok) throw new Error("Failed to load frontend_config.txt");
+    const raw = await resp.text();                          // read as text
+    const addr = raw.replace(/^\uFEFF/, "").trim();         // strip BOM + trim
+    const cleaned = addr.replace(/["'\s]/g, "");            // remove quotes/spaces
+
+    return cleaned
+}
+
+// Globals (or pass through your app init)
+let ETH_ASSET = null;
+const SOL_ASSET = {
+    asset: {
+        assetType: "Solana",
+        mint: ""
+    }
+};
+
+async function initAssets() {
+    const assetHolder = await loadEthAssetHolderFromTxt();  // e.g., "0x5C23d...728A"
+    ETH_ASSET = {
+        asset: {
+            assetType: "Ethereum",
+            assetHolder,              // from file
+            chainID: "1337"           // set this from your chain config if dynamic
+        }
+    };
+}
+
 class ChannelManager {
     constructor(ws) {
         this.ws = ws;
         this.channelId = null;
         this.channelIdx = null;
         this.proposalId = null;
+        // Internal state
+        this.state = {
+            status: 'No Channel',            // 'No Channel' | 'Proposing' | 'Active' | 'Closing' | 'Closed' | 'Error'
+            channelId: null,                 // Uint8Array or null
+            channelIdx: null,                // number or null
+            peer: { eth: null, sol: null },  // strings
+            balances: { my: [], peer: [] },  // arrays of string base units
+        };
 
         // Register handlers for channel events
         this.ws.on('ChannelProposal', (msg) => this.handleChannelProposal(msg));
@@ -11,9 +50,42 @@ class ChannelManager {
         this.ws.on('ChannelClosed', (msg) => this.handleChannelClosed(msg));
         this.ws.on('UpdateChannel', (msg) => this.handleUpdateProposal(msg));
         this.ws.on('FundingError', (msg) => this.handleFundingError(msg));
+        this.ws.on('ChannelInfo', (msg) => this.displayChannelInfo(msg)); // detailed info
+
+
+        // Poll order book every 5 seconds when channel is active
+        setInterval(() => {
+            this.refreshChannelInfo();
+        }, 5000);
+    }
+
+    getState() { return JSON.parse(JSON.stringify(this.state)); } // clone to avoid external mutation
+    getStatus() { return this.state.status; }
+    getChannelId() { return this.state.channelId; }
+    getChannelIdx() { return this.state.channelIdx; }
+    getPeer() { return { ...this.state.peer }; }
+    getBalances() { return { my: [...this.state.balances.my], peer: [...this.state.balances.peer] }; }
+
+    setState(patch) {
+        this.state = { ...this.state, ...patch };
+    }
+
+    updateChannelStatusPill() {
+        const el = document.getElementById('channel-status');
+        if (!el) return;
+        const active = this.state.status === 'Active';
+        el.textContent = active ? 'Active' : this.state.status || 'No Channel';
+        if (active) el.classList.add('connected'); else el.classList.remove('connected');
     }
 
     async openChannel() {
+        await initAssets();
+        if (!ETH_ASSET) {
+            window.log("ETH_ASSET not initialized yet.", "error");
+            return;
+        }
+        const assets = [ETH_ASSET, SOL_ASSET]; // plain objects, no wrapper
+
         const peerEth = document.getElementById('peer-eth-addr').value;
         const peerSol = document.getElementById('peer-sol-addr').value;
         const myEth = parseFloat(document.getElementById('my-eth').value);
@@ -39,28 +111,28 @@ class ChannelManager {
         const peerSolLamports = (peerSolVal * 1e9).toString();
 
         window.log('Proposing channel...', 'info');
-
+        this.setState({ status: 'Proposing' });
+        this.updateChannelStatusPill();
         try {
-            const response = await this.ws.request('OpenChannel', {
+            this.ws.request('OpenChannel', {
                 proposalID: this.proposalId,
                 peerAddressEth: peerEth,
                 peerAddressSol: peerSol,
                 challengeDuration: challenge.toString(),
                 state: {
-                    balances: [ethWei, solLamports],
-                    peerBalances: [peerEthWei, peerSolLamports],
-                    assets: [], // Populated by backend based on chain config
-                    backends: [0, 1], // EthereumIndex=0, SolanaIndex=1
+                    balance: [ethWei, solLamports],
+                    peerBalance: [peerEthWei, peerSolLamports],
+                    assets: assets, // Populated by backend based on chain config
+                    backends: [1, 6], // EthereumIndex=1, SolanaIndex=6
                     isFinal: false
                 }
             });
-
-            if (response.type === 'Success') {
-                window.log('Channel proposal sent successfully', 'success');
-            } else if (response.type === 'Error') {
-                window.log(`Channel proposal failed: ${response.error}`, 'error');
-            }
+            // Immediate UX feedback; actual acceptance/creation arrives via events
+            window.log('Channel proposal sent', 'success');
         } catch (err) {
+            this.setState({ status: 'Error' });
+            this.updateChannelStatusPill();
+
             window.log(`Failed to propose channel: ${err.message}`, 'error');
         }
     }
@@ -77,37 +149,28 @@ class ChannelManager {
         window.log('Closing channel...', 'info');
 
         try {
-            const response = await this.ws.request('CloseChannel', {
+            await this.ws.request('CloseChannel', {
                 id: Array.from(this.channelId),
                 forceClose: false
             });
-
-            if (response.type === 'Success') {
-                window.log('Channel close initiated', 'success');
-            } else if (response.type === 'Error') {
-                window.log(`Channel close failed: ${response.error}`, 'error');
-            }
         } catch (err) {
             window.log(`Failed to close channel: ${err.message}`, 'error');
         }
+
+        this.setState({ status: 'Closing' });
+
+        this.updateChannelStatusPill();
     }
 
     async refreshChannelInfo() {
         if (!this.channelId) {
-            window.log('No active channel', 'warning');
             return;
         }
 
         try {
-            const response = await this.ws.request('GetChannelInfo', {
+            this.ws.request('GetChannelInfo', {
                 id: Array.from(this.channelId)
             });
-
-            if (response.type === 'ChannelInfo') {
-                this.displayChannelInfo(response.message);
-            } else if (response.type === 'Error') {
-                window.log(`Failed to get channel info: ${response.error}`, 'error');
-            }
         } catch (err) {
             window.log(`Failed to refresh channel: ${err.message}`, 'error');
         }
@@ -141,8 +204,8 @@ class ChannelManager {
         document.getElementById('channel-info').style.display = 'block';
 
         window.log(`🎉 Channel created! ID: ${channelIdHex.substring(0, 16)}...`, 'success');
-        window.updateChannelStatus('Active', true);
-
+        this.setState({ status: 'Active', channelId: msg.id, channelIdx: msg.idx });
+        this.updateChannelStatusPill();
         // Refresh channel info to get balances
         setTimeout(() => this.refreshChannelInfo(), 1000);
     }
@@ -156,9 +219,10 @@ class ChannelManager {
 
         this.channelId = null;
         this.channelIdx = null;
-
         document.getElementById('channel-info').style.display = 'none';
-        window.updateChannelStatus('No Channel', false);
+
+        this.setState({ status: 'Closed', channelId: null, channelIdx: null, balances: { my: [], peer: [] } });
+        this.updateChannelStatusPill();
     }
 
     handleUpdateProposal(msg) {
@@ -178,6 +242,8 @@ class ChannelManager {
 
     handleFundingError(msg) {
         window.log(`❌ Funding error: ${msg.error}`, 'error');
+        this.setState({ status: 'Error' });
+        this.updateChannelStatusPill();
         alert(`Channel funding failed: ${msg.error}`);
     }
 
@@ -186,23 +252,29 @@ class ChannelManager {
         const peerBalsEl = document.getElementById('peer-balances');
         const peerIdEl = document.getElementById('peer-id');
 
+        this.setState({ peer: { eth: info.peerAddressEth, sol: info.peerAddressSol } });
         if (info.peerAddressEth && info.peerAddressSol) {
             const ethShort = info.peerAddressEth.substring(0, 10) + '...';
             const solShort = info.peerAddressSol.substring(0, 10) + '...';
             peerIdEl.textContent = `ETH: ${ethShort}, SOL: ${solShort}`;
         }
 
-        if (info.state && info.state.balances) {
-            myBalsEl.innerHTML = info.state.balances.map((bal, i) => {
+        const assetNames = ['ETH', 'SOL']; // map indices to symbols
+
+        if (info.state && info.state.balance) {
+            myBalsEl.innerHTML = info.state.balance.map((bal, i) => {
                 const formatted = this.formatBalance(bal, i);
-                return `<div>Asset ${i}: ${formatted}</div>`;
+                return `<div>${assetNames[i]}: ${formatted}</div>`;
             }).join('');
 
-            peerBalsEl.innerHTML = info.state.peerBalances.map((bal, i) => {
+            peerBalsEl.innerHTML = info.state.peerBalance.map((bal, i) => {
                 const formatted = this.formatBalance(bal, i);
-                return `<div>Asset ${i}: ${formatted}</div>`;
+                return `<div>${assetNames[i]}: ${formatted}</div>`;
             }).join('');
         }
+
+        // persist balances in state
+        this.setState({ balances: { my: info.state.balance, peer: info.state.peerBalance } });
     }
 
     formatBalance(balance, assetIndex) {

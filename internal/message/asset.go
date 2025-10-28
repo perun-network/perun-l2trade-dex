@@ -14,7 +14,7 @@ import (
 const EthereumIndex = 1
 
 // SolanaIndex represents the index for Solana assets.
-const SolanaIndex = 2
+const SolanaIndex = 6
 
 // ChainID is a type alias for BigInt representing a chain ID.
 type ChainID = BigInt

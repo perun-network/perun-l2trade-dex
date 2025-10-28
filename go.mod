@@ -10,7 +10,7 @@ require (
 	github.com/gorilla/websocket v1.5.3
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/perun-network/perun-eth-backend v0.6.0
-	github.com/perun-network/perun-solana-backend v0.0.3-0.20251023102925-6a954cf527d5
+	github.com/perun-network/perun-solana-backend v0.0.3-0.20251028160428-c561d83df73e
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/viper v1.17.0

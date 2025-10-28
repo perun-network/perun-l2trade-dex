@@ -13,10 +13,12 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/gagliardetto/solana-go"
+	"github.com/gagliardetto/solana-go/rpc"
 	"github.com/perun-network/perun-dex-websocket/internal/message"
 	wwallet "github.com/perun-network/perun-dex-websocket/internal/wallet"
 	ethchannel "github.com/perun-network/perun-eth-backend/channel"
 	ethwallet "github.com/perun-network/perun-eth-backend/wallet"
+	swallet "github.com/perun-network/perun-eth-backend/wallet/simple"
 	ethwire "github.com/perun-network/perun-eth-backend/wire"
 	solchannel "github.com/perun-network/perun-solana-backend/channel"
 	soladj "github.com/perun-network/perun-solana-backend/channel/adjudicator"
@@ -34,10 +36,17 @@ import (
 // NodeURL is the URL of an Ethereum node.
 type NodeURL = string
 
+// Replace these with your actual private keys (hex format)
+const (
+	privKeyHexA = "0x1af2e950272dd403de7a5760d41c6e44d92b6d02797e51810795ff03cc2cda4f"
+	privKeyHexB = "0xf63d7d8e930bccd74e93cf5662fde2c28fd8be95edb70c73f1bdd863d07f412e"
+)
+
 var (
 	bus           = wire.NewLocalBus()
 	ethClients    = make(map[NodeURL]*ethclient.Client)
 	ethClientsMtx = sync.Mutex{}
+	keystore      = make(map[common.Address]*ecdsa.PrivateKey) // Simplified keystore
 )
 
 // WrappedContractInterface is a wrapper over the contract backend which
@@ -62,7 +71,6 @@ func newPerunClient(
 	map[wallet.BackendID]wallet.Address,
 	*client.Client,
 	*multi.Adjudicator,
-	transactionFactoryMap,
 	map[wallet.BackendID]wire.Address,
 	error,
 ) {
@@ -71,7 +79,7 @@ func newPerunClient(
 	// Prepare Solana contract backend
 	fromAddress, err := solana.PublicKeyFromBase58(saddr)
 	if err != nil {
-		return nil, nil, nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 
 	// Convert the private key to bytes
@@ -83,17 +91,17 @@ func newPerunClient(
 	steWall := wwallet.NewSolWallet(conn)
 	account, err := solwallet.NewAccount(privateKeyHex, fromAddress, l2Address)
 	if err != nil {
-		return nil, nil, nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 	part := account.Participant()
 	solAcc := wwallet.NewSolAccount(account, steWall)
 	sWall := solwallet.NewEphemeralWallet()
 	err = sWall.AddAccount(account)
 	if err != nil {
-		return nil, nil, nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 
-	sender := NewWebSocketSender(conn, &fromAddress)
+	sender := NewWebSocketSender(conn, &fromAddress, rpc.New(cfg.SolChains[0].NodeURL))
 	tc := solclient.NewSignerConfig(
 		nil,
 		nil,
@@ -111,23 +119,22 @@ func newPerunClient(
 	multiAdjudicator := multi.NewAdjudicator()
 	watcher, err := local.NewWatcher(multiAdjudicator)
 	if err != nil {
-		return nil, nil, nil, nil, nil, fmt.Errorf("initializing watcher: %w", err)
+		return nil, nil, nil, nil, fmt.Errorf("initializing watcher: %w", err)
 	}
 
 	// Get all assets of all chains.
 	assets := cfg.EthChains.Assets()
-	adjTfs := make(transactionFactoryMap)
 	adjs := make(map[multi.LedgerIDMapKey]*soladj.Adjudicator)
 
 	// Register all solana assets on the funder and add adjudicators
 	for _, a := range cfg.SolChains {
 		perunAddr, err := message.StringToSolanaPublicKey(a.PerunAddress)
 		if err != nil {
-			return nil, nil, nil, nil, nil, err
+			return nil, nil, nil, nil, fmt.Errorf("invalid Solana address: %w", err)
 		}
 		vec, err := message.ConvertAssetConfigMapToVec(a.Assets)
 		if err != nil {
-			return nil, nil, nil, nil, nil, err
+			return nil, nil, nil, nil, fmt.Errorf("converting asset config map to vec: %w", err)
 		}
 		funder := solfunder.NewFunder(cb, perunAddr, vec)
 		multiFunder.RegisterFunder(solchannel.MakeCCID(solchannel.MakeContractID("6")), funder)
@@ -139,41 +146,39 @@ func newPerunClient(
 	}
 
 	// Register all ethereum assets on the funder and add adjudicators.
-	for id, c := range cfg.EthChains {
+	for _, c := range cfg.EthChains {
 		ethClient, err := getEthClient(c.NodeURL)
 		if err != nil {
-			return nil, nil, nil, nil, nil, err
+			return nil, nil, nil, nil, fmt.Errorf("getting Ethereum client: %w", err)
 		}
+		w := swallet.NewWallet(keystore[eaddr])
+		signer := types.LatestSignerForChainID(c.ChainID.Int)
 
-		ci := &WrappedContractInterface{ethClient}
-		signer := types.NewLondonSigner(c.ChainID.Int)
+		tfAh := swallet.NewTransactor(w, signer)
 
-		tfAh := wwallet.NewTransactorFactory(conn, eaddr, signer)
-
-		cbAh := ethchannel.NewContractBackend(ci, c.ChainID.ToEthChainID(), tfAh, cfg.TxFinalityDepth)
+		cbAh := ethchannel.NewContractBackend(ethClient, c.ChainID.ToEthChainID(), tfAh, cfg.TxFinalityDepth)
 		funder := ethchannel.NewFunder(cbAh)
 		multiFunder.RegisterFunder(ethchannel.MakeLedgerBackendID(c.ChainID.ToEthChainID().Int), funder)
 		err = registerAssets(accounts.Account{Address: eaddr}, funder, assets, cfg.GasLimits)
 		if err != nil {
-			return nil, nil, nil, nil, nil, err
+			return nil, nil, nil, nil, fmt.Errorf("registering assets: %w", err)
 		}
 
-		tfAdj := wwallet.NewTransactorFactory(conn, eaddr, signer)
-		cbAdj := ethchannel.NewContractBackend(ci, c.ChainID.ToEthChainID(), tfAdj, cfg.TxFinalityDepth)
+		tfAdj := swallet.NewTransactor(w, signer)
+		cbAdj := ethchannel.NewContractBackend(ethClient, c.ChainID.ToEthChainID(), tfAdj, cfg.TxFinalityDepth)
 		adjudicator := ethchannel.NewAdjudicator(cbAdj, c.Adjudicator, eaddr, accounts.Account{Address: eaddr}, cfg.GasLimits.GasLimitAdjudicator)
 		multiAdjudicator.RegisterAdjudicator(ethchannel.MakeLedgerBackendID(c.ChainID.ToEthChainID().Int), adjudicator)
 
-		adjTfs[id] = tfAdj
 	}
 	walletAddr := map[wallet.BackendID]wallet.Address{message.EthereumIndex: ethwallet.AsWalletAddr(l2Address), message.SolanaIndex: part}
 	wireAddr := map[wallet.BackendID]wire.Address{message.EthereumIndex: &ethwire.Address{Address: ethwallet.AsWalletAddr(l2Address)}, message.SolanaIndex: simple.NewAddress(part.String())}
 	perunClient, err := client.New(wireAddr, bus, multiFunder,
 		multiAdjudicator, map[wallet.BackendID]wallet.Wallet{message.EthereumIndex: ethWall, message.SolanaIndex: sWall}, watcher)
 	if err != nil {
-		return nil, nil, nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 
-	return walletAddr, perunClient, multiAdjudicator, adjTfs, wireAddr, nil
+	return walletAddr, perunClient, multiAdjudicator, wireAddr, nil
 }
 
 // registerAssets registers the given `assets` on the funder.
@@ -221,4 +226,24 @@ func getEthClient(nodeURL string) (*ethclient.Client, error) {
 	}
 
 	return ethClient, nil
+}
+
+func init() {
+	// Convert first private key
+	priv1, err := crypto.HexToECDSA(privKeyHexA[2:]) // strip "0x"
+	if err != nil {
+		log.Fatalf("failed to parse private key Alice: %v", err)
+	}
+	addr1 := crypto.PubkeyToAddress(priv1.PublicKey)
+	keystore[addr1] = priv1
+
+	// Convert second private key
+	priv2, err := crypto.HexToECDSA(privKeyHexB[2:])
+	if err != nil {
+		log.Fatalf("failed to parse private key Bob: %v", err)
+	}
+	addr2 := crypto.PubkeyToAddress(priv2.PublicKey)
+	keystore[addr2] = priv2
+
+	log.Printf("Keystore initialized with addresses: %s, %s", addr1.Hex(), addr2.Hex())
 }

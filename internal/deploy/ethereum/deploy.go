@@ -2,7 +2,9 @@ package ethereum
 
 import (
 	"context"
+	"fmt"
 	"math/big"
+	"os"
 
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/common"
@@ -60,4 +62,16 @@ func CreateContractBackend(
 	}
 
 	return ethchannel.NewContractBackend(ethClient, ethchannel.MakeChainID(big.NewInt(int64(chainID))), transactor, txFinalityDepth), nil
+}
+
+func WriteFrontendConfig(filepath string, ethAH common.Address) error {
+	f, err := os.Create(filepath)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	// Write the frontend configuration to the file.
+	_, err = f.WriteString(fmt.Sprintf(ethAH.Hex()))
+	return err
 }

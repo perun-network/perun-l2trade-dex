@@ -42,3 +42,7 @@ Thumbs.db
 test-ledger/
 internal/deploy/solana/scripts/accounts
 internal/deploy/solana/scripts/addresses
+
+
+# Web
+web/frontend_config.txt

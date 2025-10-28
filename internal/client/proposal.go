@@ -28,6 +28,7 @@ func (h *ProposalHandler) HandleProposal(p client.ChannelProposal, r *client.Pro
 }
 
 func (c *Client) handleChannelProposal(p client.ChannelProposal, r *client.ProposalResponder) {
+	fmt.Println("handleChannelProposal called")
 	err := func() (err error) {
 		lcp, ok := p.(*client.LedgerChannelProposalMsg)
 		if !ok {
@@ -84,6 +85,7 @@ func (c *Client) handleUpdateProposal(s *channel.State, u client.ChannelUpdate, 
 		if err != nil {
 			return
 		}
+		log.Println("Update Proposal: ", accepted)
 
 		ctx, cancel := context.WithTimeout(context.Background(), c.Timeouts.DefaultTimeout)
 		defer cancel()

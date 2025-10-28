@@ -69,13 +69,6 @@ type (
 		L2Address common.Address `json:"l2Address"`
 	}
 
-	// SetAdjTxSender can be used to set the adjudicator transaction sender for
-	// a given chain.
-	SetAdjTxSender struct {
-		ChainID ChainID        `json:"chainID"`
-		Sender  common.Address `json:"sender"`
-	}
-
 	// ChainInfo is the representation of a chain.
 	ChainInfo struct {
 		Name string  `json:"name"`
@@ -393,7 +386,6 @@ var messageTypes = map[string]reflect.Type{
 	(*SolanaInitialize)(nil).messageType():        reflect.ValueOf((*SolanaInitialize)(nil)).Type().Elem(),
 	(*CrossContractInitialize)(nil).messageType(): reflect.ValueOf((*CrossContractInitialize)(nil)).Type().Elem(),
 	(*Initialized)(nil).messageType():             reflect.ValueOf((*Initialized)(nil)).Type().Elem(),
-	(*SetAdjTxSender)(nil).messageType():          reflect.ValueOf((*SetAdjTxSender)(nil)).Type().Elem(),
 	(*GetChains)(nil).messageType():               reflect.ValueOf((*GetChains)(nil)).Type().Elem(),
 	(*GetChainsResponse)(nil).messageType():       reflect.ValueOf((*GetChainsResponse)(nil)).Type().Elem(),
 	(*GetAssets)(nil).messageType():               reflect.ValueOf((*GetAssets)(nil)).Type().Elem(),
@@ -450,7 +442,6 @@ func (*EthereumInitialize) messageType() string      { return "EthereumInitializ
 func (*SolanaInitialize) messageType() string        { return "SolanaInitialize" }
 func (*CrossContractInitialize) messageType() string { return "CrossContractInitialize" }
 func (*Initialized) messageType() string             { return "Initialized" }
-func (*SetAdjTxSender) messageType() string          { return "SetAdjTxSender" }
 func (*GetChains) messageType() string               { return "GetChains" }
 func (*GetChainsResponse) messageType() string       { return "GetChainsResponse" }
 func (*GetAssets) messageType() string               { return "GetAssets" }
@@ -570,6 +561,7 @@ func (o *JSONObject) UnmarshalJSON(data []byte) error {
 
 	msgData, _ := msg.Message.MarshalJSON()
 	if err := json.Unmarshal(msgData, obj); err != nil {
+		fmt.Println("Error unmarshalling message:", err)
 		return err
 	}
 

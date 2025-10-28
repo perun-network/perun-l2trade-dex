@@ -68,7 +68,38 @@ class PerunClient {
         this.log('Disconnected wallets and WebSocket.', 'info');
     }
 
-    // ... rest of your class methods (openChannel, closeChannel, createOrder, etc.) remain same ...
+    openChannel() {
+        if (!this.channelManager) { alert('Connect wallets first'); return; }
+        const peerEth = document.getElementById('peer-eth-addr').value.trim();
+        const peerSol = document.getElementById('peer-sol-addr').value.trim();
+        const myEth = parseFloat(document.getElementById('my-eth').value.trim() || '0');
+        const mySol = parseFloat(document.getElementById('my-sol').value.trim() || '0');
+        const peerEthAmt = parseFloat(document.getElementById('peer-eth').value.trim() || '0');
+        const peerSolAmt = parseFloat(document.getElementById('peer-sol').value.trim() || '0');
+        const challenge = parseInt(document.getElementById('challenge-duration').value.trim() || '0', 10);
+        this.channelManager.openChannel({
+            peerAddressEth: peerEth, peerAddressSol: peerSol,
+            myEthDeposit: myEth, mySolDeposit: mySol, peerEthDeposit: peerEthAmt,
+            peerSolDeposit: peerSolAmt, challengeDuration: challenge
+        });
+    }
+
+    closeChannel() { if (this.channelManager) this.channelManager.closeChannel(); }
+
+    refreshChannel() { if (this.channelManager) this.channelManager.refreshChannelInfo(); }
+
+    createOrder() {
+        if (!this.orderBookManager) { alert('Connect wallets first.'); return; }
+        const side = document.getElementById('order-side').value, baseAsset = document.getElementById('base-asset').value.trim(), quoteAsset = document.getElementById('quote-asset').value.trim(),
+            price = document.getElementById('order-price').value.trim(), amount = document.getElementById('order-amount').value.trim();
+        this.orderBookManager.createOrder({ side, baseAsset, quoteAsset, price, amount });
+    }
+
+    cancelOrder(orderId) { if (this.orderBookManager) this.orderBookManager.cancelOrder(orderId); }
+
+    acceptOrder(orderId) { if (this.orderBookManager) this.orderBookManager.acceptOrder(orderId); }
+
+    clearLog() { document.getElementById('log-container').innerHTML = ''; }
 
     updateConnectionStatus(text, connected = null) {
         const statusEl = document.getElementById('connection-status');

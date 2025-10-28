@@ -7,10 +7,10 @@ class OrderBookManager {
         this.asks = [];
 
         // Register handlers
-        this.ws.on('OrderBookSnapshot', (msg) => this.handleSnapshot(msg));
+        this.ws.on('GetOrderBookResponse', (msg) => this.handleSnapshot(msg.snapshot));
         this.ws.on('OrderBookDelta', (msg) => this.handleDelta(msg));
 
-        // Poll order book every 5 seconds when channel is active
+        // Poll order book every 5 second when channel is active
         setInterval(() => {
             if (this.channelManager.channelId) {
                 this.refreshOrderBook();
@@ -19,14 +19,19 @@ class OrderBookManager {
     }
 
     async createOrder() {
+        await initAssets();
+        if (!ETH_ASSET) {
+            window.log("ETH_ASSET not initialized yet.", "error");
+            return;
+        }
         if (!this.channelManager.channelId) {
             alert('No active channel. Please open a channel first.');
             return;
         }
 
         const side = document.getElementById('order-side').value;
-        const baseAsset = document.getElementById('base-asset').value;
-        const quoteAsset = document.getElementById('quote-asset').value;
+        const baseAsset = document.getElementById('base-asset').value === "ETH" ? ETH_ASSET : SOL_ASSET;
+        const quoteAsset = document.getElementById('quote-asset').value === "SOL" ? SOL_ASSET : ETH_ASSET;
         const price = document.getElementById('order-price').value;
         const amount = document.getElementById('order-amount').value;
 
@@ -40,14 +45,14 @@ class OrderBookManager {
         window.log(`Creating ${side} order...`, 'info');
 
         try {
-            const response = await this.ws.request('CreateOrder', {
+            this.ws.request('CreateOrder', {
                 order: {
                     id: orderId,
                     channelID: Array.from(this.channelManager.channelId),
                     makerIdx: this.channelManager.channelIdx,
                     side: side,
-                    baseAsset: { type: baseAsset },
-                    quoteAsset: { type: quoteAsset },
+                    base: baseAsset,
+                    quote: quoteAsset,
                     price: price,
                     amount: amount,
                     status: 'open',
@@ -55,12 +60,9 @@ class OrderBookManager {
                 }
             });
 
-            if (response.type === 'CreateOrderAck' && response.message.accepted) {
-                window.log(`✅ Order created: ${orderId.substring(0, 16)}...`, 'success');
-                this.refreshOrderBook();
-            } else {
-                window.log(`❌ Order rejected: ${response.message.reason}`, 'error');
-            }
+            this.refreshOrderBook();
+
+            window.log(`✅ Order created: ${orderId.substring(0, 16)}...`, 'success');
         } catch (err) {
             window.log(`Failed to create order: ${err.message}`, 'error');
         }
@@ -91,41 +93,133 @@ class OrderBookManager {
             'Accept this order?\n\n' +
             'This will:\n' +
             '1. Accept the order in the order book\n' +
-            '2. You should then manually execute a channel update with the trade balances\n\n' +
+            '2. Automatically settle trade via channel update\n\n' +
             'Continue?'
         );
-
         if (!confirmed) return;
 
         window.log(`Accepting order ${orderId.substring(0, 16)}...`, 'info');
 
         try {
-            const response = await this.ws.request('AcceptOrder', {
+            // 1. Accept the order on the order book
+            this.ws.request('AcceptOrder', {
+                channelID: Array.from(this.channelManager.channelId),
+                id: orderId
+            });
+            window.log(`✅ Order accepted. Settling in channel...`, 'success');
+
+            this.ws.request('CancelOrder', {
                 channelID: Array.from(this.channelManager.channelId),
                 id: orderId
             });
 
-            if (response.type === 'AcceptOrderAck' && response.message.accepted) {
-                window.log(`✅ Order accepted - now execute channel update to settle trade`, 'success');
-
-                // TODO: Here you would trigger UpdateChannel with new balances
-                // For now, just show a message
-                alert(
-                    'Order accepted!\n\n' +
-                    'In a production app, this would trigger a channel update with:\n' +
-                    '- Deduct base asset from seller\n' +
-                    '- Add base asset to buyer\n' +
-                    '- Deduct quote asset from buyer\n' +
-                    '- Add quote asset to seller\n\n' +
-                    'For this demo, you can manually refresh balances.'
-                );
-
-                this.refreshOrderBook();
-            } else {
-                window.log(`❌ Accept failed: ${response.message.reason}`, 'error');
+            // 2. Locate order
+            const order = this.bids.concat(this.asks).find(o => o.id === orderId);
+            if (!order) {
+                window.log('Order not found locally. Refresh and retry.', 'error');
+                return;
             }
+
+            // 3. Get channel state
+            const chState = this.channelManager.getState();
+            if (!chState.channelId || chState.channelIdx === null) {
+                window.log('No active channel found.', 'error');
+                return;
+            }
+
+            await initAssets();
+            if (!ETH_ASSET || !SOL_ASSET) {
+                window.log("Assets not initialized.", "error");
+                return;
+            }
+
+            const assets = [ETH_ASSET, SOL_ASSET]; // ETH index 0, SOL index 1
+
+            const myIdx = this.channelManager.channelIdx; // always taker
+            const peerIdx = 1 - myIdx;
+
+            let bals = chState.balances ? [...chState.balances.my] : [];
+            let peerBals = chState.balances ? [...chState.balances.peer] : [];
+
+            const makerIdx = order.makerIdx;
+            const takerIdx = 1 - makerIdx;
+
+            // Ensure correct BigInt initialization
+            bals = bals.map(x => BigInt(x));
+            peerBals = peerBals.map(x => BigInt(x));
+
+            // 4. Asset and amount calculations
+            const baseAsset = order.base;
+            const quoteAsset = order.quote;
+            const baseSymbol = baseAsset.asset.assetType === 'Ethereum' ? 'ETH' : 'SOL';
+            const quoteSymbol = quoteAsset.asset.assetType === 'Ethereum' ? 'ETH' : 'SOL';
+
+            const baseDecimals = baseSymbol === 'ETH' ? 1e18 : 1e9;
+            const quoteDecimals = quoteSymbol === 'ETH' ? 1e18 : 1e9;
+
+            const baseAmount = BigInt(Math.round(parseFloat(order.amount) * baseDecimals));
+            const quoteAmount = BigInt(Math.round(parseFloat(order.amount) * parseFloat(order.price) * quoteDecimals));
+
+            const idxFor = sym => (sym === 'ETH' ? 0 : 1);
+            const add = (arr, sym, amt) => { arr[idxFor(sym)] = arr[idxFor(sym)] + amt; };
+            const sub = (arr, sym, amt) => { arr[idxFor(sym)] = arr[idxFor(sym)] - amt; };
+
+            console.log(`Settling trade: ${order.side} ${order.amount} ${baseSymbol} @ ${order.price} ${quoteSymbol}`);
+            console.log(`baseAmt=${baseAmount}, quoteAmt=${quoteAmount}`);
+            console.log(`I am taker (acceptOrder caller). MakerIdx=${makerIdx}`);
+
+            // 5. Mirror updates (taker perspective)
+            if (order.side === 'bid') {
+                // Maker buys base, pays quote
+                // Taker sells base, receives quote
+
+                // Taker (me)
+                add(bals, quoteSymbol, quoteAmount); // receive quote
+                sub(bals, baseSymbol, baseAmount);   // send base
+
+                // Maker (peer)
+                sub(peerBals, quoteSymbol, quoteAmount);
+                add(peerBals, baseSymbol, baseAmount);
+            } else if (order.side === 'ask') {
+                // Maker sells base, receives quote
+                // Taker buys base, pays quote
+
+                // Taker (me)
+                sub(bals, quoteSymbol, quoteAmount); // pay quote
+                add(bals, baseSymbol, baseAmount);   // receive base
+
+                // Maker (peer)
+                add(peerBals, quoteSymbol, quoteAmount);
+                sub(peerBals, baseSymbol, baseAmount);
+            } else {
+                window.log(`Invalid order side: ${order.side}`, 'error');
+                return;
+            }
+
+            // Convert back to strings for serialization
+            bals = bals.map(x => x.toString());
+            peerBals = peerBals.map(x => x.toString());
+
+            // 6. Submit update
+            const updateRequest = {
+                id: Array.from(this.channelManager.channelId),
+                state: {
+                    balance: bals,
+                    peerBalance: peerBals,
+                    assets: assets,
+                    backends: [1, 6], // ETH idx=1, SOL idx=6 (adjust as per backend)
+                    isFinal: false
+                }
+            };
+
+            window.log('Submitting UpdateChannel: ' + JSON.stringify(updateRequest), 'info');
+            this.ws.request('UpdateChannel', updateRequest);
+
+            window.log('✅ Channel updated. Trade settled!', 'success');
+            this.channelManager.refreshChannelInfo();
+
         } catch (err) {
-            window.log(`Failed to accept order: ${err.message}`, 'error');
+            window.log(`Failed to accept order or update channel: ${err.message}`, 'error');
         }
     }
 
@@ -133,14 +227,10 @@ class OrderBookManager {
         if (!this.channelManager.channelId) return;
 
         try {
-            const response = await this.ws.request('GetOrderBook', {
+            this.ws.request('GetOrderBook', {
                 channelID: Array.from(this.channelManager.channelId),
                 sinceSequence: 0
             });
-
-            if (response.type === 'GetOrderBookResponse' && response.message.snapshot) {
-                this.handleSnapshot(response.message.snapshot);
-            }
         } catch (err) {
             // Silently fail on polling errors
             console.error('Order book refresh failed:', err);
@@ -206,35 +296,40 @@ class OrderBookManager {
         listEl.innerHTML = sorted.map(order => {
             const isMyOrder = order.makerIdx === this.channelManager.channelIdx;
             const shortId = order.id.substring(0, 12);
-            const baseAsset = order.baseAsset?.type || 'ASSET';
-            const quoteAsset = order.quoteAsset?.type || 'ASSET';
+
+            // Map asset types to symbols
+            const baseSymbol = order.base.asset.assetType === 'Ethereum' ? 'ETH' : 'SOL';
+            const quoteSymbol = order.quote.asset.assetType === 'Ethereum' ? 'ETH' : 'SOL';
+
+            // Display price clearly: quote per unit of base
+            const priceDisplay = `${parseFloat(order.price).toFixed(6)} ${quoteSymbol} per ${baseSymbol}`;
 
             return `
-                <div class="order-item ${side} ${isMyOrder ? 'my-order' : ''}">
-                    <div class="order-header">
-                        <span class="order-badge ${side}">
-                            ${side.toUpperCase()} ${isMyOrder ? '(YOU)' : ''}
-                        </span>
-                        <span class="order-id">${shortId}...</span>
-                    </div>
-                    <div class="order-details">
-                        <strong>${baseAsset} / ${quoteAsset}</strong><br>
-                        Price: ${order.price} ${quoteAsset} per ${baseAsset}<br>
-                        Amount: ${order.amount} (base units)
-                    </div>
-                    <div class="order-actions">
-                        ${isMyOrder ? `
-                            <button class="danger-btn small-btn" onclick="client.cancelOrder('${order.id}')">
-                                Cancel
-                            </button>
-                        ` : `
-                            <button class="success-btn small-btn" onclick="client.acceptOrder('${order.id}')">
-                                Accept & Trade
-                            </button>
-                        `}
-                    </div>
+            <div class="order-item ${side} ${isMyOrder ? 'my-order' : ''}">
+                <div class="order-header">
+                    <span class="order-badge ${side}">
+                        ${side.toUpperCase()} ${isMyOrder ? '(YOU)' : ''}
+                    </span>
+                    <span class="order-id">${shortId}...</span>
                 </div>
-            `;
+                <div class="order-details">
+                    <strong>${baseSymbol} / ${quoteSymbol}</strong><br>
+                    Price: ${priceDisplay}<br>
+                    Amount: ${order.amount} ${baseSymbol}
+                </div>
+                <div class="order-actions">
+                    ${isMyOrder ? `
+                        <button class="danger-btn small-btn" onclick="client.cancelOrder('${order.id}')">
+                            Cancel
+                        </button>
+                    ` : `
+                        <button class="success-btn small-btn" onclick="client.acceptOrder('${order.id}')">
+                            Accept & Trade
+                        </button>
+                    `}
+                </div>
+            </div>
+        `;
         }).join('');
     }
 }

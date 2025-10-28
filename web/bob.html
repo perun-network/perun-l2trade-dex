@@ -10,9 +10,8 @@
 
 <body>
     <header>
-        <h1>👤 Bob - Perun DEX Client</h1>
+        <h1>Bob - Perun DEX Client</h1>
         <p>Channel Responder & Trader</p>
-        <a href="index.html" class="back-link">← Back to Home</a>
     </header>
 
     <div class="single-user-container">
@@ -32,14 +31,14 @@
 
         <!-- Wallet Connection Section -->
         <div class="card">
-            <h2>🔌 Wallet Connection</h2>
+            <h2>Wallet Connection</h2>
             <div class="wallet-display">
                 <div class="wallet-item">
-                    <strong>🦊 MetaMask (Ethereum):</strong>
+                    <strong>Ethereum:</strong>
                     <code id="eth-address">Not connected</code>
                 </div>
                 <div class="wallet-item">
-                    <strong>👻 Phantom (Solana):</strong>
+                    <strong>Solana:</strong>
                     <code id="sol-address">Not connected</code>
                 </div>
             </div>
@@ -50,7 +49,7 @@
 
         <!-- Channel Management -->
         <div class="card">
-            <h2>📡 Payment Channel</h2>
+            <h2>Payment Channel</h2>
 
             <div class="info-box">
                 <p>
@@ -100,21 +99,21 @@
 
         <!-- Order Book -->
         <div class="card">
-            <h2>📖 Order Book</h2>
+            <h2>Order Book</h2>
 
             <div class="order-form">
                 <h3>Create New Order</h3>
                 <div class="form-row">
                     <select id="order-side">
-                        <option value="bid">Buy (Bid)</option>
                         <option value="ask">Sell (Ask)</option>
+                        <option value="bid">Buy (Bid)</option>
                     </select>
-                    <input type="text" id="base-asset" placeholder="Base (e.g., ETH)" value="ETH">
-                    <input type="text" id="quote-asset" placeholder="Quote (e.g., SOL)" value="SOL">
+                    <input type="text" id="base-asset" placeholder="Base (e.g., SOL)" value="SOL">
+                    <input type="text" id="quote-asset" placeholder="Quote (e.g., ETH)" value="ETH">
                 </div>
                 <div class="form-row">
-                    <input type="number" id="order-price" placeholder="Price" value="50" step="0.01">
-                    <input type="text" id="order-amount" placeholder="Amount (base units)" value="1000000000000000000">
+                    <input type="number" id="order-price" placeholder="Price" value="0.05">
+                    <input type="number" id="order-amount" placeholder="Amount (base units)" value="1">
                 </div>
                 <button onclick="client.createOrder()" class="primary-btn">
                     Create Order
@@ -139,12 +138,12 @@
 
         <!-- Activity Log -->
         <div class="card">
-            <h2>📝 Activity Log</h2>
+            <h2>Activity Log</h2>
             <div id="log-container" class="log-display"></div>
             <button onclick="client.clearLog()" class="secondary-btn">Clear Log</button>
         </div>
     </div>
-
+    <script src="https://unpkg.com/@solana/web3.js@^1.75.0/lib/index.iife.min.js"></script>
     <script>const USER_NAME = 'Bob';</script>
     <script src="js/wallet.js"></script>
     <script src="js/websocket.js"></script>

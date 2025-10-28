@@ -2,10 +2,10 @@ chains:
   - assets:
       - chainID: "6"
         code: SOL
-        mint: So11111111111111111111111111111111111111112
+        mint: ""
         name: Solana
         type: SOL
     chainID: "6"
     name: Solana
-    nodeURL: ws://127.0.0.1:8899
+    nodeURL: http://127.0.0.1:8899
     perunAddress: GQtQCW4dREybk2FR1gabaSb89CFxGrNS74JX5fZ97Qmh

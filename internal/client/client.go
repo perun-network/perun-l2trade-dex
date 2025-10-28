@@ -7,7 +7,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/perun-network/perun-dex-websocket/internal/message"
-	wwallet "github.com/perun-network/perun-dex-websocket/internal/wallet"
 	ethwallet "github.com/perun-network/perun-eth-backend/wallet"
 	"perun.network/go-perun/wallet"
 	"perun.network/go-perun/wire"
@@ -17,8 +16,6 @@ import (
 	"perun.network/go-perun/client"
 	"perun.network/go-perun/log"
 )
-
-type transactionFactoryMap = map[multi.LedgerIDMapKey]*wwallet.TransactorFactory
 
 type Client struct {
 	addr        common.Address                      // L2 address
@@ -36,7 +33,6 @@ type Client struct {
 	channels map[channel.ID]*client.Channel
 
 	reg *Registry
-	tfm transactionFactoryMap
 }
 
 // NewClient creates a new client.
@@ -48,7 +44,7 @@ func NewClient(
 	cfg Config,
 	reg *Registry,
 ) (*Client, error) {
-	walletAddrs, perunClient, adjudicator, tfm, wireAddrs, err := newPerunClient(conn, l2sk, eaddr, saddr, cfg)
+	walletAddrs, perunClient, adjudicator, wireAddrs, err := newPerunClient(conn, l2sk, eaddr, saddr, cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +62,6 @@ func NewClient(
 		ethChains:   cfg.EthChains,
 		Timeouts:    cfg.Timeouts,
 		reg:         reg,
-		tfm:         tfm,
 	}
 	return c, nil
 }
@@ -179,19 +174,4 @@ func (c *Client) shutdown() {
 
 func (c *Client) log(v ...interface{}) {
 	log.Printf("Client %v: %s", c.addr, fmt.Sprint(v...))
-}
-
-func (c *Client) setAdjTxSender(id multi.LedgerID, addr common.Address) error {
-	rc, ok := c.reg.Get(addr.String())
-	if !ok {
-		return fmt.Errorf("client not found")
-	}
-
-	tf, ok := c.tfm[id.MapKey()]
-	if !ok {
-		return fmt.Errorf("transaction factory not found")
-	}
-
-	tf.SetSender(rc.conn, addr)
-	return nil
 }

@@ -24,8 +24,8 @@ type WebSocketSender struct {
 }
 
 // NewWebSocketSender creates a new websocket sender.
-func NewWebSocketSender(conn *message.Connection, add *solana.PublicKey) client.Sender {
-	return &WebSocketSender{conn: conn, add: add}
+func NewWebSocketSender(conn *message.Connection, add *solana.PublicKey, rpcClient *rpc.Client) client.Sender {
+	return &WebSocketSender{conn: conn, add: add, rpcClient: rpcClient}
 }
 
 // SignSendTx signs and sends the transaction.

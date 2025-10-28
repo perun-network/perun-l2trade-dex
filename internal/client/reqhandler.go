@@ -9,8 +9,8 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/params"
+	"github.com/gagliardetto/solana-go/rpc"
 	"github.com/perun-network/perun-eth-backend/bindings/peruntoken"
-	echannel "github.com/perun-network/perun-eth-backend/channel"
 	ethwallet "github.com/perun-network/perun-eth-backend/wallet"
 	solchannel "github.com/perun-network/perun-solana-backend/channel"
 	solclient "github.com/perun-network/perun-solana-backend/client"
@@ -51,8 +51,6 @@ func (h *requestHandler) HandleRequest(req message.Request) {
 			respMsg = h.handleGetDecimals(reqMsg)
 		case *message.GetTimeout:
 			respMsg = h.handleGetTimeout(reqMsg)
-		case *message.SetAdjTxSender:
-			respMsg = h.handleSetAdjTxSender(reqMsg)
 		case *message.GetQuote:
 			respMsg = h.handleGetQuote(reqMsg)
 		case *message.GetFunds:
@@ -239,7 +237,8 @@ func (c *Client) handleGetBalance(asset *message.GetBalance) message.Message {
 	if err != nil {
 		return &message.Error{Err: "account not found"}
 	}
-	sender := NewWebSocketSender(c.conn, &fromAddress)
+
+	sender := NewWebSocketSender(c.conn, &fromAddress, rpc.New(c.solChains[0].NodeURL))
 	tc := solclient.NewSignerConfig(
 		nil,
 		nil,
@@ -318,6 +317,7 @@ func (c *Client) handleGetFunds(msg *message.GetFunds) message.Message {
 }
 
 func (c *Client) handleChannelAction(msg message.Message) message.Message {
+	fmt.Println("handleChannelAction called")
 	var err error
 	switch msg := msg.(type) {
 	case *message.OpenChannel:
@@ -333,14 +333,6 @@ func (c *Client) handleChannelAction(msg message.Message) message.Message {
 	} else {
 		return &message.Success{}
 	}
-}
-
-func (c *Client) handleSetAdjTxSender(msg *message.SetAdjTxSender) message.Message {
-	err := c.setAdjTxSender(echannel.MakeChainID(msg.ChainID.Int), msg.Sender)
-	if err != nil {
-		return message.NewError(err)
-	}
-	return &message.Success{}
 }
 
 func (c *Client) handleGetHubBalance(msg *message.GetHubBalance) message.Message {

@@ -26,6 +26,7 @@ class WSConnection {
                 }
             };
 
+            console.log("Sending WebSocket message:", JSON.stringify(initMsg));
             this.ws.send(JSON.stringify(initMsg));
         };
 
@@ -63,24 +64,14 @@ class WSConnection {
             return;
         }
 
-        // Handle signing requests
-        if (data.type === 'SignETHData' || data.message?.type === 'SignETHData') {
-            this.handleEthSignRequest(data.message?.message || data.message);
+        if (data.type === 'Response') {
+            this.handleResponse(data.message);
             return;
         }
 
-        if (data.type === 'SignSolData' || data.message?.type === 'SignSolData') {
-            this.handleSolSignRequest(data.message?.message || data.message);
-            return;
-        }
-
-        if (data.type === 'SendETHTx' || data.message?.type === 'SendETHTx') {
-            this.handleEthTxRequest(data.message?.message || data.message);
-            return;
-        }
-
-        if (data.type === 'SendSolTx' || data.message?.type === 'SendSolTx') {
-            this.handleSolTxRequest(data.message?.message || data.message);
+        if (data.type == 'Request') {
+            // Handle request messages
+            this.handleRequest(data.message)
             return;
         }
 
@@ -147,44 +138,126 @@ class WSConnection {
         }
     }
 
-    async handleEthTxRequest(data) {
+    async handleEthTxRequest(id, data) {
         window.log('🦊 MetaMask transaction requested', 'info');
 
         try {
-            const txHash = await this.walletManager.signEthereumTransaction(data.transaction);
-
+            const rawSignedTx = await this.walletManager.signEthereumTransaction(data.transaction);
+            console.log("Signed Ethereum transaction:", rawSignedTx);
             const response = {
-                type: 'SendETHTxResponse',
+                type: 'Response',
                 message: {
-                    transaction: data.transaction
+                    id: id,
+                    message: {
+                        type: 'SendETHTxResponse',
+                        message: {
+                            transaction: rawSignedTx
+                        }
+                    }
                 }
             };
 
             this.ws.send(JSON.stringify(response));
-            window.log(`✅ Ethereum tx sent: ${txHash.substring(0, 16)}...`, 'success');
+            window.log(`✅ Ethereum tx sent: ${rawSignedTx.substring(0, 16)}...`, 'success');
         } catch (error) {
             window.log(`❌ Ethereum tx failed: ${error.message}`, 'error');
         }
     }
 
-    async handleSolTxRequest(data) {
+    async handleSolTxRequest(id, message) {
         window.log('👻 Phantom transaction requested', 'info');
 
         try {
-            const txBuffer = Uint8Array.from(atob(data.tx), c => c.charCodeAt(0));
-            const signature = await this.walletManager.signSolanaTransaction(txBuffer);
-
+            // The tx field may be under data.message.transaction or similar
+            const base64Tx = message.transaction;
+            const signedTxBase64 = await this.walletManager.signSolanaTransaction(base64Tx);
+            console.log("Signed Solana transaction:", signedTxBase64);
             const response = {
-                type: 'SendSolTxResponse',
+                type: 'Response',
                 message: {
-                    tx: data.tx
+                    id: id,
+                    message: {
+                        type: 'SendSolTxResponse',
+                        message: {
+                            transaction: signedTxBase64
+                        }
+                    }
                 }
             };
 
             this.ws.send(JSON.stringify(response));
-            window.log(`✅ Solana tx sent: ${signature.substring(0, 16)}...`, 'success');
+            window.log(`✅ Solana tx sent: ${signedTxBase64.substring(0, 16)}...`, 'success');
         } catch (error) {
             window.log(`❌ Solana tx failed: ${error.message}`, 'error');
+        }
+    }
+
+    async handleResponse(data) {
+        console.log("Handling response:", data);
+        if (data.message.type === 'ChannelInfo') {
+            console.log("Channel info received:", data.message);
+            this.messageHandlers.get(data.message.type)(data.message?.message);
+        }
+
+
+        if (data.message.type === 'GetOrderBookResponse') {
+            console.log("Order book response received:", data.message);
+            this.messageHandlers.get(data.message.type)(data.message?.message);
+        }
+    }
+
+    async handleRequest(data) {
+        console.log("Handling request:", data);
+        if (data.message.type === 'ChannelProposal') {
+            // Handle channel proposal
+            try {
+                const response = {
+                    type: 'Response',
+                    message: {
+                        id: data.id,
+                        message: {
+                            type: 'ProposalResponse',
+                            message: {
+                                accepted: true,
+                                rejectReason: ''
+                            }
+                        }
+                    }
+                };
+                this.ws.send(JSON.stringify(response));
+            } catch (error) {
+                console.error("Error handling channel proposal:", error);
+            }
+        }
+
+        if (data.message.type === 'UpdateChannel') {
+            // Handle channel update
+            try {
+                const response = {
+                    type: 'Response',
+                    message: {
+                        id: data.id,
+                        message: {
+                            type: 'ProposalResponse',
+                            message: {
+                                accepted: true,
+                                rejectReason: ''
+                            }
+                        }
+                    }
+                };
+                this.ws.send(JSON.stringify(response));
+            } catch (error) {
+                console.error("Error handling channel update:", error);
+            }
+        }
+
+        if (data.message.type === 'SendSolTx') {
+            this.handleSolTxRequest(data.id, data.message?.message);
+        }
+
+        if (data.message.type === 'SendETHTx') {
+            this.handleEthTxRequest(data.id, data.message?.message);
         }
     }
 
@@ -197,27 +270,26 @@ class WSConnection {
 
             const id = this.messageId++;
             const request = {
-                id: id,
+                type: 'Request',
                 message: {
-                    type: messageType,
-                    message: messageData
+                    id: id,
+                    message: {
+                        type: messageType,
+                        message: messageData
+                    }
                 }
             };
 
             this.pendingRequests.set(id, resolve);
-            this.ws.send(JSON.stringify(request));
 
-            // Timeout after 30 seconds
-            setTimeout(() => {
-                if (this.pendingRequests.has(id)) {
-                    this.pendingRequests.delete(id);
-                    reject(new Error('Request timeout'));
-                }
-            }, 30000);
+            console.log("Sending WebSocket message:", JSON.stringify(request));
+            this.ws.send(JSON.stringify(request));
         });
     }
 
     on(messageType, handler) {
         this.messageHandlers.set(messageType, handler);
     }
+
+
 }

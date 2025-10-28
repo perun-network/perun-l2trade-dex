@@ -2,7 +2,6 @@ package message
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/ethereum/go-ethereum/common"
 	ethwallet "github.com/perun-network/perun-eth-backend/wallet"
@@ -33,7 +32,6 @@ func (c *Connection) ChannelProposal(
 		PeerAddressSol: solAddress.String(),
 		State:          state,
 	}
-	log.Println("State: ", state)
 
 	resp, err := c.Request(req)
 	if err != nil {

@@ -2,7 +2,7 @@ chains:
   - adjudicator: 0xdc4a7e107ad6dbda1870df34d70b51796bbd1335
     assets:
       - address: "0x0000000000000000000000000000000000000000"
-        assetHolder: 0xb051ead0c6cc2f568166f8fec4f07511b88678ba
+        assetHolder:
         chainID: "1337"
         code: ETH
         name: Ethereum

@@ -11,8 +11,8 @@ FEE_PAYER=$(solana-keygen pubkey "$FEE_PAYER_KEYPAIR")
 solana airdrop 20 "$FEE_PAYER"
 
 echo "[airdrop] Funding Alice and Bob..."
-solana airdrop 1 "$ALICE"
-solana airdrop 1 "$BOB"
+solana airdrop 20 "$ALICE"
+solana airdrop 20 "$BOB"
 
 echo "[token] Creating mint..."
 MINT=$(spl-token create-token --fee-payer "$FEE_PAYER_KEYPAIR" | grep -oP '(?<=Creating token )\w+')

@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+
+	"perun.network/go-perun/channel"
 )
 
 // Helper function to marshal an Asset field into JSON.
@@ -114,22 +116,29 @@ func (c ChannelState) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON unmarshals ChannelState from JSON.
 func (c *ChannelState) UnmarshalJSON(data []byte) error {
+	fmt.Println("Unmarshalling ChannelState from JSON:", string(data))
 	var temp struct {
-		Assets      []json.RawMessage `json:"assets"`
-		Backends    []int             `json:"backends"`
 		Balance     []Balance         `json:"balance"`
 		PeerBalance []Balance         `json:"peerBalance"`
+		Assets      []json.RawMessage `json:"assets"`
+		Backends    []int             `json:"backends"`
 		IsFinal     bool              `json:"isFinal"`
 	}
 
 	if err := json.Unmarshal(data, &temp); err != nil {
+		fmt.Println("Error unmarshalling ChannelState:", err)
 		return err
 	}
+
+	fmt.Println("Unmarshalled temporary ChannelState struct:", temp)
 
 	var assets []Asset
 	for _, rawAsset := range temp.Assets {
 		asset, err := unmarshalAsset(rawAsset)
+		fmt.Println("Unmarshalled asset:", asset)
 		if err != nil {
+
+			fmt.Println("Error unmarshalling asset in ChannelState:", err)
 			return err
 		}
 		assets = append(assets, asset)
@@ -140,6 +149,91 @@ func (c *ChannelState) UnmarshalJSON(data []byte) error {
 	c.Balance = temp.Balance
 	c.PeerBalance = temp.PeerBalance
 	c.IsFinal = temp.IsFinal
+	return nil
+}
+
+func (c Order) MarshalJSON() ([]byte, error) {
+	var baseJSON json.RawMessage
+	var quoteJSON json.RawMessage
+	baseJSON, err := marshalAsset(c.Base)
+	if err != nil {
+		return nil, err
+	}
+
+	quoteJSON, err = marshalAsset(c.Quote)
+	if err != nil {
+		return nil, err
+	}
+
+	return json.Marshal(struct {
+		ID        OrderID         `json:"id"`
+		ChannelID channel.ID      `json:"channelID"`
+		MakerIdx  channel.Index   `json:"makerIdx"`  // who created it, 0/1
+		Side      OrderSide       `json:"side"`      // "bid" or "ask"
+		Base      json.RawMessage `json:"base"`      // asset being bought/sold
+		Quote     json.RawMessage `json:"quote"`     // pricing asset
+		Price     string          `json:"price"`     // decimal string
+		Amount    string          `json:"amount"`    // base units
+		Status    OrderStatus     `json:"status"`    // lifecycle status
+		CreatedAt int64           `json:"createdAt"` // unix seconds
+		ExpiresAt *int64          `json:"expiresAt,omitempty"`
+		ClientTag string          `json:"clientTag,omitempty"` // optional client tag
+	}{
+		ID:        c.ID,
+		ChannelID: c.ChannelID,
+		MakerIdx:  c.MakerIdx,
+		Side:      c.Side,
+		Base:      baseJSON,
+		Quote:     quoteJSON,
+		Price:     c.Price,
+		Amount:    c.Amount,
+		Status:    c.Status,
+		CreatedAt: c.CreatedAt,
+		ExpiresAt: c.ExpiresAt,
+		ClientTag: c.ClientTag,
+	})
+}
+
+func (c *Order) UnmarshalJSON(data []byte) error {
+	var temp struct {
+		ID        OrderID         `json:"id"`
+		ChannelID channel.ID      `json:"channelID"`
+		MakerIdx  channel.Index   `json:"makerIdx"`  // who created it, 0/1
+		Side      OrderSide       `json:"side"`      // "bid" or "ask"
+		Base      json.RawMessage `json:"base"`      // asset being bought/sold
+		Quote     json.RawMessage `json:"quote"`     // pricing asset
+		Price     string          `json:"price"`     // decimal string
+		Amount    string          `json:"amount"`    // base units
+		Status    OrderStatus     `json:"status"`    // lifecycle status
+		CreatedAt int64           `json:"createdAt"` // unix seconds
+		ExpiresAt *int64          `json:"expiresAt,omitempty"`
+		ClientTag string          `json:"clientTag,omitempty"` // optional client tag
+	}
+
+	if err := json.Unmarshal(data, &temp); err != nil {
+		return err
+	}
+	baseAsset, err := unmarshalAsset(temp.Base)
+	if err != nil {
+		return err
+	}
+	quoteAsset, err := unmarshalAsset(temp.Quote)
+	if err != nil {
+		return err
+	}
+
+	c.ID = temp.ID
+	c.ChannelID = temp.ChannelID
+	c.MakerIdx = temp.MakerIdx
+	c.Side = temp.Side
+	c.Base = baseAsset
+	c.Quote = quoteAsset
+	c.Price = temp.Price
+	c.Amount = temp.Amount
+	c.Status = temp.Status
+	c.CreatedAt = temp.CreatedAt
+	c.ExpiresAt = temp.ExpiresAt
+	c.ClientTag = temp.ClientTag
 	return nil
 }
 
