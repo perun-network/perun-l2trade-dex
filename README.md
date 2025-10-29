@@ -2,7 +2,7 @@
     <a href="https://perun.network/"><img src=".assets/perun-logo.svg" alt="Perun" width="196"></a>
 <br></h1>
 
-# PerunL2Trade
+# PerunL2Trade - Layer 2 Cross-chain Decentralized Exchange
 
 **PerunL2Trade**: A cross-chain decentralized exchange prototype leveraging Perun state channels for trustless, off-chain trading between Ethereum and Solana. Combines real-time WebSocket communication with browser-based wallet integration (MetaMask + Phantom) to enable fast, low-cost asset swaps through payment channel updates and an integrated off-chain order book.
 
