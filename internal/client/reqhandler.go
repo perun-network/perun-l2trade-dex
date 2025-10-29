@@ -1,7 +1,6 @@
 package client
 
 import (
-	"fmt"
 	"math"
 	mathrand "math/rand"
 	"time"
@@ -116,7 +115,6 @@ func (c *Client) handleSendSignedState(msg *message.SignedState) message.Message
 }
 
 func (c *Client) handleGetChains() message.Message {
-	fmt.Println("handleGetChains called", c.ethChains, c.solChains)
 	// We declare a non-nil but zero-length slice because we want to encode it
 	// with JSON such that empty slices encode to [] and not to null.
 	var chains []message.ChainInfo
@@ -135,7 +133,6 @@ func (c *Client) handleGetChains() message.Message {
 		}
 		chains = append(chains, mc)
 	}
-	fmt.Println("Chains: ", chains)
 	return &message.GetChainsResponse{Chains: chains}
 }
 
@@ -279,12 +276,10 @@ func (c *Client) handleGetTimeout(msg *message.GetTimeout) message.Message {
 }
 
 func (c *Client) handleGetQuote(msg *message.GetQuote) message.Message {
-	fmt.Println("handleGetQuote called")
 	hub, ok := c.reg.Get(msg.Hub)
 	if !ok {
 		return &message.Error{Err: "hub not found"}
 	}
-	fmt.Println("HUB: ", hub.addr)
 	rspChan := make(chan message.Message)
 	// Request the hub for the quote.
 	go func() {
@@ -317,7 +312,6 @@ func (c *Client) handleGetFunds(msg *message.GetFunds) message.Message {
 }
 
 func (c *Client) handleChannelAction(msg message.Message) message.Message {
-	fmt.Println("handleChannelAction called")
 	var err error
 	switch msg := msg.(type) {
 	case *message.OpenChannel:
@@ -336,12 +330,10 @@ func (c *Client) handleChannelAction(msg message.Message) message.Message {
 }
 
 func (c *Client) handleGetHubBalance(msg *message.GetHubBalance) message.Message {
-	fmt.Println("handleGetQuote called")
 	hub, ok := c.reg.Get(msg.Hub)
 	if !ok {
 		return &message.Error{Err: "hub not found"}
 	}
-	fmt.Println("HUB: ", hub.addr)
 	rspChan := make(chan message.Message)
 	// Request the hub for the quote.
 	go func() {

@@ -561,7 +561,6 @@ func (o *JSONObject) UnmarshalJSON(data []byte) error {
 
 	msgData, _ := msg.Message.MarshalJSON()
 	if err := json.Unmarshal(msgData, obj); err != nil {
-		fmt.Println("Error unmarshalling message:", err)
 		return err
 	}
 

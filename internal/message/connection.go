@@ -134,7 +134,6 @@ func (c *Connection) Handle(h Handler) (err error) {
 			}
 			_resp <- msg.Message.Message
 		case *Request:
-			fmt.Println("Received Request: ", msg)
 			if msg.Message == nil {
 				log.Error("received nil request")
 				break

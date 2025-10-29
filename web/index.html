@@ -4,7 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Perun DEX - Cross-Chain Trading Platform</title>
+    <title>PerunL2Trade - Cross-Chain Trading Platform</title>
+    <link rel="icon" type="image/svg+xml" href="images/perun-logo.svg">
     <link rel="stylesheet" href="css/style.css">
     <style>
         .landing-container {
@@ -16,21 +17,84 @@
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
         }
 
-        .hero {
+        /* Enhanced header styling */
+        header {
             text-align: center;
-            margin-bottom: 50px;
+            padding-bottom: 30px;
+            border-bottom: 2px solid #f0f0f0;
+            margin-bottom: 40px;
         }
 
-        .hero h1 {
-            font-size: 3em;
-            color: #667eea;
+        .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
             margin-bottom: 20px;
         }
 
+        .header-content img {
+            height: 60px;
+            transition: transform 0.3s ease;
+        }
+
+        .header-content img:hover {
+            transform: scale(1.05);
+        }
+
+        .header-text h1 {
+            margin: 0;
+            font-size: 2.5em;
+            color: #667eea;
+            font-weight: 700;
+        }
+
+        .header-text p {
+            margin: 5px 0 0 0;
+            font-size: 1.1em;
+            color: #666;
+        }
+
+        /* Hero section with CTA */
+        .hero {
+            text-align: center;
+            margin-bottom: 50px;
+            padding: 40px 20px;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+            border-radius: 15px;
+        }
+
+        .hero h2 {
+            font-size: 2em;
+            color: #333;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+
         .hero p {
-            font-size: 1.3em;
+            font-size: 1.2em;
             color: #666;
             line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto 30px auto;
+        }
+
+        .hero-cta {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 40px;
+            border-radius: 30px;
+            text-decoration: none;
+            font-size: 1.1em;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .hero-cta:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
         }
 
         .features {
@@ -45,11 +109,18 @@
             padding: 30px;
             border-radius: 15px;
             border-left: 5px solid #667eea;
+            transition: transform 0.3s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
         }
 
         .feature-card h3 {
             color: #667eea;
             margin-bottom: 15px;
+            font-size: 1.3em;
         }
 
         .user-links {
@@ -57,6 +128,7 @@
             gap: 30px;
             justify-content: center;
             margin: 50px 0;
+            flex-wrap: wrap;
         }
 
         .user-card {
@@ -96,6 +168,7 @@
         .instructions h3 {
             color: #667eea;
             margin-bottom: 20px;
+            font-size: 1.5em;
         }
 
         .instructions ol {
@@ -115,28 +188,66 @@
             padding: 30px;
             background: #f8f9fa;
             border-radius: 15px;
+            flex-wrap: wrap;
+            gap: 20px;
         }
 
         .tech-item {
             text-align: center;
+            transition: transform 0.3s ease;
+        }
+
+        .tech-item:hover {
+            transform: scale(1.1);
         }
 
         .tech-item img {
             width: 80px;
             height: 80px;
             margin-bottom: 10px;
+            object-fit: contain;
+        }
+
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+            }
+
+            .header-text h1 {
+                font-size: 2em;
+            }
+
+            .hero h2 {
+                font-size: 1.5em;
+            }
+
+            .user-links {
+                flex-direction: column;
+                align-items: center;
+            }
         }
     </style>
 </head>
 
 <body>
     <div class="landing-container">
+        <header>
+            <div class="header-content">
+                <img src="images/perun-logo.svg" alt="Perun Network">
+                <div class="header-text">
+                    <h1>PerunL2Trade</h1>
+                    <p>Cross-chain state channel trading platform</p>
+                </div>
+            </div>
+        </header>
+
         <div class="hero">
-            <h1>🌐 Perun DEX</h1>
+            <h2>Trade ETH ⟷ SOL Instantly with Zero Gas Fees</h2>
             <p>
-                Cross-chain state channel trading platform powered by Perun Network.<br>
-                Trade ETH ⟷ SOL instantly with zero gas fees using payment channels.
+                Experience lightning-fast cross-chain trading powered by Perun Network's state channel technology.
+                Execute unlimited trades off-chain with instant finality and cryptographic security.
             </p>
+            <a href="#get-started" class="hero-cta">Get Started →</a>
         </div>
 
         <div class="features">
@@ -166,7 +277,7 @@
             </div>
         </div>
 
-        <div class="instructions">
+        <div class="instructions" id="get-started">
             <h3>🚀 How to Get Started</h3>
             <ol>
                 <li><strong>Install Wallets:</strong> Make sure you have MetaMask (Ethereum) and Phantom (Solana)
@@ -198,20 +309,19 @@
 
         <div class="tech-stack">
             <div class="tech-item">
-                <div style="font-size: 4em;">🦊</div>
-                <strong>MetaMask</strong>
+                <img src="images/metamask-logo.svg" alt="MetaMask">
             </div>
             <div class="tech-item">
-                <div style="font-size: 4em;">👻</div>
-                <strong>Phantom</strong>
+                <img src="images/phantom-logo.svg" alt="Phantom">
             </div>
             <div class="tech-item">
-                <div style="font-size: 4em;">⚡</div>
-                <strong>Perun</strong>
+                <img src="images/ethereum-logo.svg" alt="Ethereum">
             </div>
             <div class="tech-item">
-                <div style="font-size: 4em;">🔗</div>
-                <strong>WebSocket</strong>
+                <img src="images/solana-logo.svg" alt="Solana">
+            </div>
+            <div class="tech-item">
+                <img src="images/perun-logo.svg" alt="Perun">
             </div>
         </div>
 

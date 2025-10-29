@@ -30,7 +30,6 @@ func startClient(conn *websocket.Conn, cfg client.Config) {
 
 	// Handle CC initialization message
 	if crossInitMsg, ok := initMsg.(*message.CrossContractInitialize); ok {
-		log.Println("Got cross-contract init message")
 		// Create L1 and L2 Addresses for client
 		solClientAddr := crossInitMsg.SolClientAddress
 		ethClientAddr := crossInitMsg.EthClientAddress

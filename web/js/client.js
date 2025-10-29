@@ -82,9 +82,15 @@ class PerunClient {
             myEthDeposit: myEth, mySolDeposit: mySol, peerEthDeposit: peerEthAmt,
             peerSolDeposit: peerSolAmt, challengeDuration: challenge
         });
+        this.log(`Channel open request sent to ${peerEth} / ${peerSol}`, 'info');
     }
 
-    closeChannel() { if (this.channelManager) this.channelManager.closeChannel(); }
+    closeChannel() {
+        if (this.channelManager) {
+            this.channelManager.closeChannel();
+            this.log('Channel close request sent.', 'info');
+        }
+    }
 
     refreshChannel() { if (this.channelManager) this.channelManager.refreshChannelInfo(); }
 
@@ -93,11 +99,22 @@ class PerunClient {
         const side = document.getElementById('order-side').value, baseAsset = document.getElementById('base-asset').value.trim(), quoteAsset = document.getElementById('quote-asset').value.trim(),
             price = document.getElementById('order-price').value.trim(), amount = document.getElementById('order-amount').value.trim();
         this.orderBookManager.createOrder({ side, baseAsset, quoteAsset, price, amount });
+        this.log(`Order created: ${side} ${amount} ${baseAsset} @ ${price} ${quoteAsset}`, 'info');
     }
 
-    cancelOrder(orderId) { if (this.orderBookManager) this.orderBookManager.cancelOrder(orderId); }
+    cancelOrder(orderId) {
+        if (this.orderBookManager) {
+            this.orderBookManager.cancelOrder(orderId);
+            this.log(`Cancelling order ${orderId}`, 'info');
+        }
+    }
 
-    acceptOrder(orderId) { if (this.orderBookManager) this.orderBookManager.acceptOrder(orderId); }
+    acceptOrder(orderId) {
+        if (this.orderBookManager) {
+            this.orderBookManager.acceptOrder(orderId);
+            this.log(`Accepting order ${orderId}`, 'info');
+        }
+    }
 
     clearLog() { document.getElementById('log-container').innerHTML = ''; }
 

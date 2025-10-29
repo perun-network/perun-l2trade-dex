@@ -25,8 +25,6 @@ class WSConnection {
                     egoisticClient: false
                 }
             };
-
-            console.log("Sending WebSocket message:", JSON.stringify(initMsg));
             this.ws.send(JSON.stringify(initMsg));
         };
 
@@ -85,8 +83,6 @@ class WSConnection {
     }
 
     async handleEthSignRequest(data) {
-        window.log('🦊 MetaMask signature requested', 'info');
-
         try {
             const hexData = Array.isArray(data.data)
                 ? '0x' + data.data.map(b => b.toString(16).padStart(2, '0')).join('')
@@ -115,8 +111,6 @@ class WSConnection {
     }
 
     async handleSolSignRequest(data) {
-        window.log('👻 Phantom signature requested', 'info');
-
         try {
             const messageStr = Array.isArray(data.data)
                 ? new TextDecoder().decode(new Uint8Array(data.data))
@@ -171,7 +165,6 @@ class WSConnection {
             // The tx field may be under data.message.transaction or similar
             const base64Tx = message.transaction;
             const signedTxBase64 = await this.walletManager.signSolanaTransaction(base64Tx);
-            console.log("Signed Solana transaction:", signedTxBase64);
             const response = {
                 type: 'Response',
                 message: {
@@ -193,21 +186,17 @@ class WSConnection {
     }
 
     async handleResponse(data) {
-        console.log("Handling response:", data);
         if (data.message.type === 'ChannelInfo') {
-            console.log("Channel info received:", data.message);
             this.messageHandlers.get(data.message.type)(data.message?.message);
         }
 
 
         if (data.message.type === 'GetOrderBookResponse') {
-            console.log("Order book response received:", data.message);
             this.messageHandlers.get(data.message.type)(data.message?.message);
         }
     }
 
     async handleRequest(data) {
-        console.log("Handling request:", data);
         if (data.message.type === 'ChannelProposal') {
             // Handle channel proposal
             try {
@@ -281,8 +270,6 @@ class WSConnection {
             };
 
             this.pendingRequests.set(id, resolve);
-
-            console.log("Sending WebSocket message:", JSON.stringify(request));
             this.ws.send(JSON.stringify(request));
         });
     }

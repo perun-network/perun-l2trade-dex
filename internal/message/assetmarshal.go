@@ -116,7 +116,6 @@ func (c ChannelState) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON unmarshals ChannelState from JSON.
 func (c *ChannelState) UnmarshalJSON(data []byte) error {
-	fmt.Println("Unmarshalling ChannelState from JSON:", string(data))
 	var temp struct {
 		Balance     []Balance         `json:"balance"`
 		PeerBalance []Balance         `json:"peerBalance"`
@@ -126,19 +125,13 @@ func (c *ChannelState) UnmarshalJSON(data []byte) error {
 	}
 
 	if err := json.Unmarshal(data, &temp); err != nil {
-		fmt.Println("Error unmarshalling ChannelState:", err)
 		return err
 	}
-
-	fmt.Println("Unmarshalled temporary ChannelState struct:", temp)
 
 	var assets []Asset
 	for _, rawAsset := range temp.Assets {
 		asset, err := unmarshalAsset(rawAsset)
-		fmt.Println("Unmarshalled asset:", asset)
 		if err != nil {
-
-			fmt.Println("Error unmarshalling asset in ChannelState:", err)
 			return err
 		}
 		assets = append(assets, asset)

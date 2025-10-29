@@ -176,7 +176,6 @@ func NewEthereumAsset(a echannel.Asset) EthereumAsset {
 	// Set the big.Int from the string (the second argument is the base, e.g., 10 for decimal)
 	_, success := chainID.SetString(string(a.LedgerBackendID().LedgerID().MapKey()), 10)
 	if !success {
-		fmt.Println("Failed to convert string to big.Int")
 		return EthereumAsset{}
 	}
 	return EthereumAsset{

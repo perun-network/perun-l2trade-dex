@@ -2,8 +2,6 @@ package message
 
 import (
 	"encoding/json"
-	"fmt"
-	"log"
 	"reflect"
 
 	"github.com/gagliardetto/solana-go"
@@ -86,7 +84,6 @@ func ParseSolanaAssetType(s string) (SolanaAssetType, error) {
 			return SolanaAssetType(i), nil
 		}
 	}
-	log.Println("Invalid value for asset type", s)
 	return SolanaAssetType(0), errors.New("invalid value for asset type")
 }
 
@@ -128,7 +125,6 @@ func (a *SolanaAsset) UnmarshalJSON(data []byte) error {
 	}
 
 	a.Mint = raw.Mint
-	fmt.Println("Unmarshaled Solana asset with mint:", a.Mint)
 	return nil
 }
 
@@ -143,8 +139,6 @@ func SolanaAssetsToAssets(in []SolanaAsset) []Asset {
 
 // NewSolanaAsset creates a new Asset from a SolanaAssetConfig.
 func NewSolanaAsset(a SolanaAssetConfig) (*SolanaAsset, error) {
-	fmt.Println("Creating new solana asset", a.Mint)
-
 	return &SolanaAsset{
 		Mint: a.Mint,
 	}, nil

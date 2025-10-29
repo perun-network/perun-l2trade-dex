@@ -81,7 +81,6 @@ class ChannelManager {
     async openChannel() {
         await initAssets();
         if (!ETH_ASSET) {
-            window.log("ETH_ASSET not initialized yet.", "error");
             return;
         }
         const assets = [ETH_ASSET, SOL_ASSET]; // plain objects, no wrapper
@@ -110,7 +109,6 @@ class ChannelManager {
         const peerEthWei = (peerEthVal * 1e18).toString();
         const peerSolLamports = (peerSolVal * 1e9).toString();
 
-        window.log('Proposing channel...', 'info');
         this.setState({ status: 'Proposing' });
         this.updateChannelStatusPill();
         try {
@@ -149,17 +147,16 @@ class ChannelManager {
         window.log('Closing channel...', 'info');
 
         try {
-            await this.ws.request('CloseChannel', {
+            this.ws.request('CloseChannel', {
                 id: Array.from(this.channelId),
                 forceClose: false
             });
+            this.setState({ status: 'Closing' });
+            this.updateChannelStatusPill();
+            document.getElementById('channel-info').style.display = 'none';
         } catch (err) {
             window.log(`Failed to close channel: ${err.message}`, 'error');
         }
-
-        this.setState({ status: 'Closing' });
-
-        this.updateChannelStatusPill();
     }
 
     async refreshChannelInfo() {
@@ -177,7 +174,6 @@ class ChannelManager {
     }
 
     handleChannelProposal(msg) {
-        window.log('📨 Channel proposal received', 'info');
 
         // Auto-accept for demo
         this.ws.request('ProposalResponse', {

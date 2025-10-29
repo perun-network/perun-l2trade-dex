@@ -83,6 +83,5 @@ func run(args []string) {
 			TxFinalityDepth: *runTxFinalityDepth,
 		},
 	}
-	fmt.Println("cfg: ", solChainsConfig.AssetMap())
 	websocket.Run(cfg)
 }

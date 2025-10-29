@@ -34,7 +34,6 @@ func (c *Connection) SignETHData(addr common.Address, data []byte) (sig []byte, 
 
 	_resp, ok := resp.(*SignResponse)
 	if !ok {
-		fmt.Println(resp)
 		err = fmt.Errorf("expected sign data response, got %T", resp)
 		return
 	}
@@ -53,7 +52,6 @@ func (c *Connection) SignSolData(addr string, data []byte) (sig []byte, err erro
 
 	_resp, ok := resp.(*SignResponse)
 	if !ok {
-		fmt.Println(resp)
 		err = fmt.Errorf("expected sign data response, got %T", resp)
 		return
 	}

@@ -1,8 +1,6 @@
 package websocket
 
 import (
-	"fmt"
-	"log"
 	"math/big"
 	"reflect"
 	"strconv"
@@ -120,21 +118,16 @@ func ParseEthereumChainsConfig(file string) (EthereumChainsConfig, error) {
 // ParseSolanaChainsConfig reads the chains' config file and returns it as a ChainsFile
 // struct with the chains and deployer secret keys separated.
 func ParseSolanaChainsConfig(file string) (SolanaChainsConfig, error) {
-	log.Println("Reading config file", file)
 	var chainsFile SolanaChainsConfig
 
-	fmt.Println("Reading config file")
 	viper.SetConfigFile(file)
 	if err := viper.ReadInConfig(); err != nil {
 		return chainsFile, err
 	}
 
-	fmt.Println("Decoding config file")
 	opts := viper.DecodeHook(mapstructure.ComposeDecodeHookFunc(
 		parseSolanaConfigTypes(),
 	))
-	fmt.Println(&opts)
-	fmt.Println("Unmarshalling config file", chainsFile)
 	if err := viper.Unmarshal(&chainsFile, opts); err != nil {
 		return chainsFile, err
 	}
@@ -142,21 +135,17 @@ func ParseSolanaChainsConfig(file string) (SolanaChainsConfig, error) {
 	// Is used for checking for duplicate asset codes.
 	assetCodes := make(map[solchannel.ContractLID]bool)
 
-	fmt.Println("Checking for duplicate asset codes", chainsFile)
 	// Apply the chain's ID to each asset of this chain and check for duplicate
 	// asset codes.
 	for _, c := range chainsFile.Chains {
 		for _, a := range c.Assets {
 			sola := a
 			if _, ok := assetCodes[solchannel.MakeContractID(sola.Code)]; ok {
-				log.Println("Duplicate asset code")
 				return SolanaChainsConfig{}, errors.Errorf("duplicate asset code %v", sola.Code)
 			}
 			assetCodes[solchannel.MakeContractID(sola.Code)] = true
 		}
 	}
-	log.Println("Returning chains file")
-
 	return chainsFile, nil
 }
 

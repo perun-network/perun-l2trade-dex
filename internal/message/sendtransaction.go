@@ -3,7 +3,6 @@ package message
 import (
 	"errors"
 	"fmt"
-	"log"
 
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/gagliardetto/solana-go"
@@ -61,7 +60,6 @@ func (c *Connection) SendSolTx(tx *solana.Transaction) (_tx *solana.Transaction,
 
 	transaction, err := solana.TransactionFromBase64(_resp.Tx)
 	if err != nil {
-		log.Println("Error: invalid base64: ", err)
 		return nil, err
 	}
 

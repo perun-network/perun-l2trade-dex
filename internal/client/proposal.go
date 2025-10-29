@@ -28,7 +28,6 @@ func (h *ProposalHandler) HandleProposal(p client.ChannelProposal, r *client.Pro
 }
 
 func (c *Client) handleChannelProposal(p client.ChannelProposal, r *client.ProposalResponder) {
-	fmt.Println("handleChannelProposal called")
 	err := func() (err error) {
 		lcp, ok := p.(*client.LedgerChannelProposalMsg)
 		if !ok {
@@ -42,12 +41,10 @@ func (c *Client) handleChannelProposal(p client.ChannelProposal, r *client.Propo
 		}
 
 		assets := message.MakeAssetsGPAsAssets(lcp.InitBals.Assets)
-		fmt.Println("Proposal Assets: ", assets)
 		if err = c.checkAssets(assets); err != nil {
 			c.log(err)
 			return
 		}
-		log.Println("Proposal: ", lcp)
 		resp, err := c.channelProposal(lcp)
 		if err != nil {
 			return
@@ -85,7 +82,6 @@ func (c *Client) handleUpdateProposal(s *channel.State, u client.ChannelUpdate, 
 		if err != nil {
 			return
 		}
-		log.Println("Update Proposal: ", accepted)
 
 		ctx, cancel := context.WithTimeout(context.Background(), c.Timeouts.DefaultTimeout)
 		defer cancel()

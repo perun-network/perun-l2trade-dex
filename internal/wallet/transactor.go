@@ -1,7 +1,6 @@
 package wallet
 
 import (
-	"log"
 	"sync"
 
 	"github.com/ethereum/go-ethereum/accounts"
@@ -60,7 +59,6 @@ func (f *TransactorFactory) NewTransactor(_ accounts.Account) (*bind.TransactOpt
 
 			_tx, err = f.conn.SendETHTx(tx, message.MakeChainID(f.signer.ChainID()))
 			if err != nil {
-				log.Println("Error sending transaction:", err)
 				_tx, err = f.conn.SendETHTx(tx, message.MakeChainID(f.signer.ChainID()))
 				if err != nil {
 					return nil, err

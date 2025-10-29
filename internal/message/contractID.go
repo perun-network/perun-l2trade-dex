@@ -13,7 +13,6 @@ func PublicKeyToString(pubKey solana.PublicKey) string {
 
 // StringToPublicKey converts a hex string back to xdr.PublicKey
 func StringToPublicKey(s string) (solana.PublicKey, error) {
-	fmt.Println("Converting string to public key:", s)
 	if s == "" {
 		return solana.PublicKey{}, nil
 	}
