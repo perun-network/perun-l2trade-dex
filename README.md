@@ -1,5 +1,5 @@
 <h1 align="center"><br>
-    <a href="https://perun.network/"><img src=".assets/perun-logo.svg" alt="Perun" width="196"></a>
+    <a href="https://perun.network/"><img src=".assets/perun-logo-white.svg" alt="Perun" width="196"></a>
 <br></h1>
 
 # PerunL2Trade - Layer 2 Cross-chain Decentralized Exchange
