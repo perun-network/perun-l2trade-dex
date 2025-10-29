@@ -54,7 +54,7 @@
 - **MetaMask** browser extension
 - **Phantom** browser extension
 - **Modern web browser**
-- 
+  
 ### Installation
 
 1. Clone the repository:
