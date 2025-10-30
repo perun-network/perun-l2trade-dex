@@ -4,7 +4,8 @@
 
 # PerunL2Trade - Layer 2 Cross-chain Decentralized Exchange
 
-**PerunL2Trade**: A cross-chain decentralized exchange prototype leveraging Perun state channels for trustless, off-chain trading between Ethereum and Solana. Combines real-time WebSocket communication with browser-based wallet integration (MetaMask + Phantom) to enable fast, low-cost asset swaps through payment channel updates and an integrated off-chain order book.
+**PerunL2Trade**: A cross-chain decentralized exchange prototype leveraging [Perun state channels](https://perun.network/) for trustless, off-chain trading between [Ethereum](https://ethereum.org/) and [Solana](https://solana.com/). Combines real-time WebSocket communication with browser-based non-custodial wallet integration (MetaMask + Phantom) to enable fast, low-cost asset swaps through payment channel updates and an integrated off-chain order book.
+
 
 ## Features
 
@@ -214,7 +215,20 @@ Initial `OrderBookSnapshot` frame followed by `OrderBookDelta` frames that inclu
 
 - Subscribe to `/ws/orderbook` for live deltas while maintaining a local snapshot.​
 
+## Acknowledgements
 
+This project is built for [Colosseum Cypherpunk Hackathon 2025](https://www.colosseum.com/cypherpunk).
+- [Pitch](https://www.loom.com/share/5339cdbd06d846cbad11d79330a3cd07)
+- [Technical Demo](https://youtu.be/SYMZGJZgrlo)
+- [X (Twitter)](https://x.com/PolyCrypt_)
+
+## Related repositories
+
+- Go-Perun: https://github.com/hyperledger-labs/go-perun
+- Perun Solana Program: 
+- Perun Solana Backend:
+- Perun Eth Backend: https://github.com/hyperledger-labs/perun-eth-backend 
+- Perun Eth Contracts: https://github.com/hyperledger-labs/perun-eth-contracts
 
 ## License
 
