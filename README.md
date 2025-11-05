@@ -225,8 +225,8 @@ This project is built for [Colosseum Cypherpunk Hackathon 2025](https://www.colo
 ## Related repositories
 
 - Go-Perun: https://github.com/hyperledger-labs/go-perun
-- Perun Solana Program: 
-- Perun Solana Backend:
+- Perun Solana Program: https://github.com/perun-network/perun-solana-program
+- Perun Solana Backend: https://github.com/perun-network/perun-solana-backend
 - Perun Eth Backend: https://github.com/hyperledger-labs/perun-eth-backend 
 - Perun Eth Contracts: https://github.com/hyperledger-labs/perun-eth-contracts
 
